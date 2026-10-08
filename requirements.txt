@@ -1,0 +1,17 @@
+streamlit>=1.32
+pdfplumber>=0.11
+pytesseract>=0.3.10
+Pillow>=10.0
+playwright>=1.44
+pyotp>=2.9
+pydantic>=2.6
+httpx[socks]>=0.27
+python-dotenv>=1.0
+tenacity>=8.2
+openpyxl>=3.1
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9
+PyJWT>=2.8
+requests>=2.31
+dnspython>=2.6

@@ -1,0 +1,335 @@
+================================================================================
+     SR-VORTEX  -  LEIA ANTES DE INICIAR O BOT  (macOS)
+================================================================================
+
+Leia TUDO antes de fazer qualquer coisa.
+Siga na ordem. Cada passo depende do anterior.
+
+
+================================================================================
+  PASSO 1  -  EXTRAIR O ZIP
+================================================================================
+
+  - Clique duas vezes no arquivo SR-VORTEX-XXXXX.zip
+  - Ele vai criar uma pasta SR-VORTEX no mesmo lugar
+  - Mova essa pasta para um local facil, tipo:
+      ~/Desktop/SR-VORTEX
+    ou
+      ~/Documents/SR-VORTEX
+
+  >>> NAO extraia dentro de pastas do sistema (/System, /Library) <<<
+
+
+================================================================================
+  PASSO 2  -  INSTALAR HOMEBREW, PYTHON E NODE.JS
+================================================================================
+
+  Abra o Terminal (Cmd+Espaco, digite "Terminal", Enter).
+
+  Se voce NAO tem o Homebrew instalado, cole este comando:
+
+      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+  Siga as instrucoes na tela. No final, ele pede pra rodar 2 comandos
+  pra adicionar o brew ao PATH — rode os dois.
+
+  Depois instale Python e Node:
+
+      brew install python node git
+
+  Espere terminar. Para conferir:
+
+      python3 --version
+      node --version
+
+  Se aparecer as versoes (ex: Python 3.12.x e v22.x.x), esta tudo ok.
+
+
+================================================================================
+  PASSO 3  -  INSTALAR DEPENDENCIAS DO BOT
+================================================================================
+
+  Agora que Python e Node estao instalados, va ate a pasta do projeto
+  e de DUPLO CLIQUE no arquivo:
+
+      INSTALAR_DEPENDENCIAS.command
+
+  Se aparecer "permissao negada", clique com botao direito > Abrir.
+  Ou rode no Terminal:
+
+      cd ~/Desktop/SR-VORTEX
+      bash INSTALAR_DEPENDENCIAS.command
+
+  Ele vai:
+    - Criar o ambiente Python (pasta venv/)
+    - Instalar todas as bibliotecas do Python
+    - Instalar o navegador do Playwright (Chromium)
+    - Instalar as dependencias do frontend (Node/npm)
+    - Instalar o Tesseract OCR (leitura de documentos)
+
+  Isso pode levar de 3 a 10 minutos dependendo da internet.
+  Espere terminar. No final ele mostra "INSTALACAO CONCLUIDA".
+
+  -----------------------------------------------------------------------
+  SE PREFERIR INSTALAR MANUALMENTE PELO TERMINAL:
+  -----------------------------------------------------------------------
+
+  1. Ir ate a pasta do projeto:
+
+      cd ~/Desktop/SR-VORTEX
+
+  2. Criar o ambiente Python:
+
+      python3 -m venv venv
+
+  3. Ativar o ambiente:
+
+      source venv/bin/activate
+
+  4. Instalar bibliotecas Python:
+
+      pip install --upgrade pip
+      pip install -r requirements.txt
+
+  5. Instalar o navegador do Playwright:
+
+      python -m playwright install chromium
+
+  6. Instalar o frontend (Node):
+
+      cd frontend
+      npm install
+      cd ..
+
+  Pronto. Tudo instalado.
+
+
+================================================================================
+  PASSO 4  -  CONFIGURAR O ARQUIVO .env
+================================================================================
+
+  Este e o passo MAIS IMPORTANTE. Sem isso o bot NAO funciona.
+
+  Dentro da pasta do projeto, abra o arquivo chamado:
+
+      .env
+
+  Abra com o TextEdit ou VS Code. Se nao aparecer no Finder, aperte
+  Cmd+Shift+. (ponto) para mostrar arquivos ocultos.
+
+  Voce precisa preencher OBRIGATORIAMENTE estas linhas:
+
+  -----------------------------------------------------------------------
+  CAMPO                   | O QUE COLOCAR
+  -----------------------------------------------------------------------
+  PANEL_USERNAME          | Um nome de usuario para voce acessar o painel
+                          | Exemplo: meuuser
+  -----------------------------------------------------------------------
+  PANEL_PASSWORD          | Uma senha para acessar o painel
+                          | Exemplo: minha_senha_forte
+  -----------------------------------------------------------------------
+  PANEL_AUTH_SECRET       | Uma chave de seguranca aleatoria.
+                          | Abra o Terminal e digite:
+                          |
+                          |   python3 -c "import secrets;print(secrets.token_urlsafe(48))"
+                          |
+                          | Copie o resultado e cole nessa linha.
+  -----------------------------------------------------------------------
+
+  >>> Sem essas 3 o painel NAO abre. <<<
+
+  -----------------------------------------------------------------------
+  CAMPOS DAS APIs (preencha os que voce tiver):
+  -----------------------------------------------------------------------
+  NUMERO_VIRTUAL_API_KEY  | Sua chave da numero-virtual.com (SMS)
+                          | Sem ela: SMS fica manual (voce digita o codigo)
+  -----------------------------------------------------------------------
+  NUMERO_VIRTUAL_CUSTOMER_SESSION
+                          | Cookie JWT da numero-virtual.com
+                          | Pega no navegador: F12 > Application > Cookies
+                          | Copie o valor do cookie "customer_session"
+  -----------------------------------------------------------------------
+  CAPSOLVER_API_KEY       | Sua chave do capsolver.com (captcha automatico)
+                          | Sem ela: captcha fica manual
+  -----------------------------------------------------------------------
+  INFOSIMPLES_API_TOKEN   | Sua chave da infosimples.com (PDF comprovante)
+                          | Sem ela: PDF de comprovante fica desabilitado
+  -----------------------------------------------------------------------
+
+  Os demais campos ja vem com valores padrao. NAO mexa neles a menos que
+  saiba o que esta fazendo.
+
+  >>> NUNCA use # (cerquilha/hashtag) dentro de valores no .env <<<
+  >>> O Python interpreta # como comentario e corta o valor <<<
+
+  Depois de preencher, salve o arquivo (Cmd+S) e feche.
+
+
+================================================================================
+  PASSO 5  -  CONFIGURAR O ADSPOWER
+================================================================================
+
+  1. Abra o AdsPower e faca login na sua conta
+  2. O bot se conecta ao AdsPower pela porta local (127.0.0.1:50325)
+  3. O AdsPower precisa estar ABERTO durante todo o tempo que o bot rodar
+
+  A chave de API do AdsPower (ADSPOWER_API_KEY no .env) e OPCIONAL.
+  O bot funciona sem ela. So preencha se quiser.
+
+
+================================================================================
+  PASSO 6  -  INICIAR O BOT
+================================================================================
+
+  Tudo pronto? Agora e so dar DUPLO CLIQUE em:
+
+      INICIAR_TUDO.command
+
+  Ele abre DUAS janelas do Terminal:
+    - Backend  = servidor da API   em http://localhost:8000
+    - Frontend = painel visual     em http://localhost:5173
+
+  Depois de ~30 segundos o navegador abre automaticamente no painel.
+  Faca login com o PANEL_USERNAME e PANEL_PASSWORD que voce definiu.
+
+  -----------------------------------------------------------------------
+  SE PREFERIR INICIAR PELO TERMINAL:
+  -----------------------------------------------------------------------
+
+  Abra DOIS Terminais separados.
+
+  No primeiro (backend):
+
+      cd ~/Desktop/SR-VORTEX
+      source venv/bin/activate
+      python -m uvicorn api_server:app --host 0.0.0.0 --port 8000 --reload
+
+  No segundo (frontend):
+
+      cd ~/Desktop/SR-VORTEX/frontend
+      npm run dev
+
+  Abra o navegador em: http://localhost:5173
+
+  -----------------------------------------------------------------------
+
+  Se preferir abrir separado:
+    - INICIAR_BACKEND.command  = so o servidor
+    - INICIAR_FRONTEND.command = so o painel
+
+  Para PARAR o bot: feche as duas janelas (ou Ctrl+C em cada uma).
+
+
+================================================================================
+  PASSO 7  -  PRIMEIRAS CONFIGURACOES NO PAINEL
+================================================================================
+
+  Quando o painel abrir, voce precisa configurar PELO PAINEL:
+
+  1. ABA "APIs" (/apis)
+     - Clique em "Verificar APIs" para testar se suas chaves estao ok
+     - Ele mostra saldo e status de cada servico
+
+  2. ABA "Proxies" (/proxies)
+     - Cadastre seus proxies (IP:Porta:User:Senha)
+     - O bot precisa de proxy para rodar as contas
+
+  3. ABA "Contas" (/contas)
+     - Adicione as contas Facebook que o bot vai usar
+     - Formato: email:senha (uma por linha)
+
+  4. ABA "CNPJs" (/cnpjs)
+     - Adicione os CNPJs que serao usados nas BMs
+     - Pode importar lista ou adicionar manualmente
+
+  5. ABA "Configuracoes" > "Dominios"
+     - Cadastre seus dominios + token da Cloudflare/Netlify
+     - Necessario para a verificacao de dominio das BMs
+
+
+================================================================================
+  COMO USAR NO DIA A DIA
+================================================================================
+
+  1. Abra o AdsPower e faca login
+  2. De duplo clique em INICIAR_TUDO.command
+  3. Acesse http://localhost:5173 no navegador
+  4. Faca login
+  5. Ative o Autopilot ou inicie runs manuais
+
+
+================================================================================
+  PROBLEMAS COMUNS
+================================================================================
+
+  PROBLEMA: "Permissao negada" ao clicar num .command
+  SOLUCAO:  Clique com botao direito > Abrir
+            Ou rode no Terminal: chmod +x *.command
+
+  PROBLEMA: "python3 nao encontrado"
+  SOLUCAO:  Instale com: brew install python
+            Se nao tem Homebrew, instale primeiro (veja PASSO 2)
+
+  PROBLEMA: "Nao consigo acessar o painel"
+  SOLUCAO:  Verifique se as 3 variaveis PANEL_* estao preenchidas no .env
+            Reinicie o backend (feche e abra INICIAR_BACKEND.command)
+
+  PROBLEMA: "AdsPower connection error"
+  SOLUCAO:  O AdsPower precisa estar ABERTO e LOGADO na maquina
+            Verifique se a porta 50325 nao esta bloqueada
+
+  PROBLEMA: "SMS nao chega"
+  SOLUCAO:  Verifique o saldo na numero-virtual.com
+            Verifique se NUMERO_VIRTUAL_API_KEY esta preenchida
+            Verifique se o NUMERO_VIRTUAL_CUSTOMER_SESSION nao expirou
+            (expira a cada ~7 dias, precisa renovar)
+
+  PROBLEMA: "Erro ao iniciar / venv quebrada"
+  SOLUCAO:  Apague a pasta venv/ inteira e rode no Terminal:
+              cd ~/Desktop/SR-VORTEX
+              python3 -m venv venv
+              source venv/bin/activate
+              pip install -r requirements.txt
+              python -m playwright install chromium
+
+  PROBLEMA: "Frontend nao abre / erro de node_modules"
+  SOLUCAO:  Rode no Terminal:
+              cd ~/Desktop/SR-VORTEX/frontend
+              rm -rf node_modules
+              npm install
+
+  PROBLEMA: "Arquivo .env nao aparece no Finder"
+  SOLUCAO:  No Finder, aperte Cmd+Shift+. (ponto) para mostrar ocultos
+
+
+================================================================================
+  RENOVAR O COOKIE SMS (A CADA ~7 DIAS)
+================================================================================
+
+  O cookie NUMERO_VIRTUAL_CUSTOMER_SESSION expira a cada ~7 dias.
+  Quando expirar, o painel mostra um aviso amarelo.
+
+  Para renovar:
+  1. Abra https://app.numero-virtual.com no navegador
+  2. Faca login na sua conta
+  3. Aperte F12 (ou Cmd+Option+I no Mac)
+  4. Va em Application > Cookies > app.numero-virtual.com
+  5. Encontre o cookie "customer_session"
+  6. Copie o valor inteiro
+  7. Cole no .env na linha NUMERO_VIRTUAL_CUSTOMER_SESSION=
+  8. Reinicie o backend
+
+
+================================================================================
+  CONTATO / SUPORTE
+================================================================================
+
+  Dono: Lusca
+  WhatsApp: (19) 98212-0535
+
+  Qualquer duvida manda mensagem.
+
+
+================================================================================
+  FIM - Boa sorte e boas BMs!
+================================================================================
