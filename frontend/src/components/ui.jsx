@@ -180,11 +180,13 @@ export function Badge({ tone = 'neutral', children }) {
     warn: 'bg-neutral-100 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500',
     // rodando: neutro com ponto pulsante (sinal de "vivo" sem virar alarme).
     running: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300',
+    sky: 'bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300',
     neutral: 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400',
   }
   return (
     <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${tones[tone] || tones.neutral}`}>
       {tone === 'running' && <span className="h-1.5 w-1.5 rounded-full bg-neutral-500 dark:bg-neutral-400 animate-pulse" />}
+      {tone === 'sky' && <span className="h-1.5 w-1.5 rounded-full bg-sky-400 dark:bg-sky-400 animate-pulse" />}
       {children}
     </span>
   )

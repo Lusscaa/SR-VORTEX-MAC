@@ -34,7 +34,7 @@ done
 if [ ! -d ".git" ]; then
   echo "❌ Esta pasta não é um repositório git."
   echo "   Você precisa ter clonado o projeto com:"
-  echo "   git clone https://github.com/Lusscaa/sr-vortex.git"
+  echo "   git clone https://github.com/Lusscaa/SR-VORTEX-MAC.git"
   read -r -p "Pressione Enter para fechar..."; exit 1
 fi
 

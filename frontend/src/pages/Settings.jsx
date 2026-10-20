@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { Key, Download, Cloud, AlertCircle, CheckCircle, Zap, RefreshCw } from "lucide-react"
+import { useEffect, useState, useRef, useCallback } from "react"
+import { Key, Download, Cloud, AlertCircle, CheckCircle, Zap, RefreshCw, GripVertical, Palette } from "lucide-react"
 import { api } from "../api.js"
 import { Badge, Card, PageHead, btnPrimary, inputCls } from "../components/ui.jsx"
 
@@ -8,6 +8,61 @@ const FIELDS = [
   // Hospedagem dos sites por CNPJ agora é Netlify (ver a seção "Domínios
   // Netlify" abaixo): domínio + token + limite, cadastrados em runtime.
 ]
+
+// ---------------------------------------------------------------------------
+// Template padrão — qual layout usar quando cria sites nas runs automáticas
+// ---------------------------------------------------------------------------
+const TEMPLATES = [
+  { id: "corporate", label: "Corporate", desc: "Fundo claro, navy + teal — perfil empresarial completo com todos os dados da Receita", color: "teal" },
+  { id: "premium", label: "Premium", desc: "Amber escuro — elegante, confiável, ideal para verificação Meta", color: "amber" },
+  { id: "nextgen", label: "Nova Geração", desc: "Moderno 2026 — glassmorphism, gradientes violet", color: "violet" },
+  { id: "professional", label: "Profissional", desc: "Claro, corporativo — fundo branco", color: "blue" },
+  { id: "classic", label: "Clássico", desc: "Escuro, original — verde neon", color: "emerald" },
+]
+
+function DefaultTemplatePicker({ current, onRefresh }) {
+  const active = current?.default_template?.value || "corporate"
+  const [saving, setSaving] = useState(false)
+
+  const pick = async (id) => {
+    if (id === active) return
+    setSaving(true)
+    try {
+      await api.saveSettings({ default_template: id })
+      onRefresh()
+    } catch { /* ignore */ }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <Card className="mb-5">
+      <div className="flex items-center gap-2 mb-4">
+        <Palette size={20} className="text-violet-500" />
+        <h3 className="text-base font-bold">Template padrão dos sites</h3>
+        <span className="text-xs text-neutral-500">(usado nas runs automáticas e como default ao gerar site)</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+        {TEMPLATES.map((t) => {
+          const sel = active === t.id
+          const ring = { teal: "border-teal-500 bg-teal-50 dark:bg-teal-950/20", amber: "border-amber-500 bg-amber-50 dark:bg-amber-950/20", violet: "border-violet-500 bg-violet-50 dark:bg-violet-950/20", blue: "border-blue-500 bg-blue-50 dark:bg-blue-950/20", emerald: "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20" }
+          const txt = { teal: "text-teal-700 dark:text-teal-300", amber: "text-amber-700 dark:text-amber-300", violet: "text-violet-700 dark:text-violet-300", blue: "text-blue-700 dark:text-blue-300", emerald: "text-emerald-700 dark:text-emerald-300" }
+          return (
+            <button key={t.id} onClick={() => pick(t.id)} disabled={saving}
+              className={`p-4 rounded-xl border-2 text-left transition-all ${
+                sel ? ring[t.color] : "border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600"
+              } ${saving ? "opacity-60" : ""}`}>
+              <div className="flex items-center justify-between mb-1">
+                <span className={`text-sm font-bold ${sel ? txt[t.color] : "text-neutral-700 dark:text-neutral-300"}`}>{t.label}</span>
+                {sel && <CheckCircle size={16} className={txt[t.color]} />}
+              </div>
+              <span className="block text-[11px] text-neutral-500 dark:text-neutral-400">{t.desc}</span>
+            </button>
+          )
+        })}
+      </div>
+    </Card>
+  )
+}
 
 export default function Settings() {
   const [current, setCurrent] = useState({})
@@ -41,6 +96,7 @@ export default function Settings() {
     <>
       <PageHead title="Credenciais" subtitle="Provedor de hospedagem e domínios (DNS) dos sites" />
 
+      <DefaultTemplatePicker current={current} onRefresh={load} />
       <HostingProviderToggle provider={provider} onChange={setProvider} onRefresh={load} />
       <CloudflareDomains domains={cfDomains} onRefresh={load} />
       <NetlifyDomains domains={domains} onRefresh={load} />
@@ -620,6 +676,30 @@ function CloudflareDomains({ domains, onRefresh }) {
   const [adding, setAdding] = useState(false)
   const [msg, setMsg] = useState(null)
   const [lastNs, setLastNs] = useState(null)
+  const [localOrder, setLocalOrder] = useState(null)
+  const dragItem = useRef(null)
+  const dragOver = useRef(null)
+
+  const orderedDomains = localOrder || domains
+
+  const handleDragStart = useCallback((idx) => { dragItem.current = idx }, [])
+  const handleDragEnter = useCallback((idx) => { dragOver.current = idx }, [])
+  const handleDragEnd = useCallback(async () => {
+    const from = dragItem.current
+    const to = dragOver.current
+    dragItem.current = null
+    dragOver.current = null
+    if (from === null || to === null || from === to) return
+    const items = [...orderedDomains]
+    const [moved] = items.splice(from, 1)
+    items.splice(to, 0, moved)
+    setLocalOrder(items)
+    try {
+      await api.reorderCloudflareDomains(items.map((d) => d.domain))
+      onRefresh()
+    } catch (e) { setMsg({ ok: false, text: e.message }) }
+    finally { setLocalOrder(null) }
+  }, [orderedDomains, onRefresh])
 
   const add = async () => {
     setMsg(null); setLastNs(null)
@@ -668,6 +748,8 @@ function CloudflareDomains({ domains, onRefresh }) {
     } catch (e) { setMsg({ ok: false, text: e.message }) }
   }
 
+  const activeIdx = orderedDomains.findIndex((x) => x.remaining > 0 && x.dns_ok)
+
   return (
     <Card className="max-w-2xl mt-6 border-2 border-orange-200 dark:border-orange-900 bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-orange-950/30 dark:to-yellow-950/30">
       <div className="flex items-center gap-2 mb-5">
@@ -679,24 +761,39 @@ function CloudflareDomains({ domains, onRefresh }) {
         <b>🔄 Como funciona:</b> cada CNPJ vira um subdomínio do seu domínio (ex.: <span className="font-mono">empresa.seudominio.com</span>), servido por <b>1 Worker</b> na Cloudflare — sem limite prático de subdomínios e no plano grátis. Cadastre com <b>Account ID + API Token</b>; nós criamos a zona e mostramos os <b>nameservers</b> para você pôr na Hostinger. Ative no <b>Provedor de hospedagem</b> acima.
       </p>
 
-      {domains.length === 0 ? (
+      {orderedDomains.length === 0 ? (
         <div className="text-sm text-orange-600 dark:text-orange-300 mb-5 p-4 bg-orange-100 dark:bg-orange-900/20 rounded-lg border-l-4 border-orange-400">
           📭 Nenhum domínio Cloudflare adicionado ainda.
         </div>
       ) : (
-        <div className="flex flex-col gap-3 mb-6">
-          {domains.map((d, i) => (
-            <CloudflareDomainRow
-              key={d.domain}
-              domain={d}
-              isActive={i === domains.findIndex((x) => x.remaining > 0 && x.dns_ok)}
-              onReset={() => reset(d.domain)}
-              onDelete={() => remove(d.domain)}
-              onCheck={() => checkStatus(d.domain)}
-              onSaveQuota={(remaining, cap) => setQuota(d.domain, remaining, cap)}
-            />
-          ))}
-        </div>
+        <>
+          <p className="text-xs text-orange-600 dark:text-orange-400 mb-2 flex items-center gap-1.5">
+            <GripVertical size={14} /> Arraste para reordenar — o 1° com vaga livre será o padrão nas runs.
+          </p>
+          <div className="flex flex-col gap-3 mb-6">
+            {orderedDomains.map((d, i) => (
+              <div
+                key={d.domain}
+                draggable
+                onDragStart={() => handleDragStart(i)}
+                onDragEnter={() => handleDragEnter(i)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => e.preventDefault()}
+                className="cursor-grab active:cursor-grabbing"
+              >
+                <CloudflareDomainRow
+                  domain={d}
+                  position={i + 1}
+                  isActive={i === activeIdx}
+                  onReset={() => reset(d.domain)}
+                  onDelete={() => remove(d.domain)}
+                  onCheck={() => checkStatus(d.domain)}
+                  onSaveQuota={(remaining, cap) => setQuota(d.domain, remaining, cap)}
+                />
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {lastNs && lastNs.nameservers.length > 0 && (
@@ -741,7 +838,7 @@ function CloudflareDomains({ domains, onRefresh }) {
   )
 }
 
-function CloudflareDomainRow({ domain, isActive, onReset, onDelete, onCheck, onSaveQuota }) {
+function CloudflareDomainRow({ domain, position, isActive, onReset, onDelete, onCheck, onSaveQuota }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [showNs, setShowNs] = useState(false)
@@ -758,6 +855,10 @@ function CloudflareDomainRow({ domain, isActive, onReset, onDelete, onCheck, onS
     <div className={`rounded-lg border-2 bg-gradient-to-r ${bgColor} p-4 shadow-sm hover:shadow-md transition-shadow`}>
       <div className="flex items-center justify-between mb-3 gap-2">
         <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
+          <span className="shrink-0 flex items-center gap-1 text-orange-500 dark:text-orange-400 select-none" title="Arraste para reordenar">
+            <GripVertical size={16} />
+            <span className="text-xs font-bold text-orange-700 dark:text-orange-300 bg-orange-200 dark:bg-orange-900/60 px-1.5 py-0.5 rounded">{position}°</span>
+          </span>
           {!dns_ok && (<span className="shrink-0 text-xs font-bold uppercase tracking-wide bg-amber-200 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 px-2 py-1 rounded-full">⏳ aguardando NS</span>)}
           {dns_ok && isActive && remaining > 0 && (<span className="shrink-0 text-xs font-bold uppercase tracking-wide bg-green-200 dark:bg-green-900/60 text-green-700 dark:text-green-300 px-2 py-1 rounded-full">🟢 ativo</span>)}
           {dns_ok && remaining <= 0 && (<span className="shrink-0 text-xs font-bold uppercase tracking-wide bg-red-200 dark:bg-red-900/60 text-red-700 dark:text-red-300 px-2 py-1 rounded-full">🔴 cheio</span>)}

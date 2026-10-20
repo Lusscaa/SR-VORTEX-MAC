@@ -104,6 +104,7 @@ class JobSpec:
     cnpj2_overrides: Optional[dict[str, str]] = None
     browser_provider: str = "adspower"
     waba_enabled: bool = False
+    stop_after_ad_account: bool = False
 
     @property
     def cnpj_digits(self) -> str:
@@ -546,6 +547,7 @@ async def _execute_job_async(
         extra_bm_units=extra_bm_units,
         browser_provider=spec.browser_provider,
         waba_enabled=spec.waba_enabled,
+        stop_after_ad_account=spec.stop_after_ad_account,
     )
     # run_id (o da UI/JobManager) no runner: usado pela parada cooperativa
     # (botões Encerrar/Assumir) em run_control. O saga tem um id próprio

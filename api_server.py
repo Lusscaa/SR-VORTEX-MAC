@@ -14,6 +14,10 @@ depois (TODO). Rode com: ``uvicorn api_server:app --port 8000``.
 from __future__ import annotations
 
 import asyncio
+import sys
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 import json
 import logging
 import re
@@ -143,7 +147,7 @@ MAX_CONCURRENCY = 50  # sem limite prático — o operador controla
 # SMS serviço/país NÃO são editáveis: sempre fb/br (default no config.py).
 SETTING_KEYS = [
     "adspower_api_key", "cloudflare_account_id", "cloudflare_api_token",
-    "cloudflare_worker_name",
+    "cloudflare_worker_name", "default_template",
 ]
 _SECRET_KEYS = {"adspower_api_key", "cloudflare_api_token"}
 
@@ -837,6 +841,29 @@ def recover_account_cnpj_run(run_id: str) -> dict[str, Any]:
     }
 
 
+@app.post("/api/runs/{run_id}/pause")
+def pause_run(run_id: str) -> dict[str, Any]:
+    """PAUSAR temporariamente: o bot entra em espera no próximo checkpoint seguro.
+    Browser e perfil ficam abertos e intocados. 'Retomar' faz o bot continuar
+    de onde parou — mesmo pipeline, mesma task, sem criar run nova."""
+    run = store.get_run(run_id)
+    if not run:
+        raise HTTPException(404, f"Run '{run_id}' não encontrada.")
+    if run.get("status") not in (store.RUN_RUNNING,):
+        raise HTTPException(
+            409,
+            f"Só runs em execução podem ser pausadas (status atual: '{run.get('status')}').",
+        )
+    run_control.request_pause(run_id)
+    step = run.get("step") or "?"
+    return {
+        "run_id": run_id,
+        "paused": True,
+        "current_step": step,
+        "message": f"Pausa solicitada — o bot vai pausar no próximo checkpoint seguro (etapa atual: '{step}').",
+    }
+
+
 @app.post("/api/runs/{run_id}/assume")
 def assume_run(run_id: str) -> dict[str, Any]:
     """ASSUMIR manualmente (botão 'Assumir'): para o bot mas MANTÉM o perfil
@@ -951,30 +978,39 @@ def resume_run(run_id: str, req: ResumeReq) -> dict[str, Any]:
     if not run:
         raise HTTPException(404, f"Run '{run_id}' não encontrada.")
 
-    # Só pode continuar se foi assumida pelo operador
-    if run.get("status") != store.RUN_ASSUMED:
+    if run.get("status") not in (store.RUN_ASSUMED, store.RUN_PAUSED):
         raise HTTPException(
             409,
             f"Run não pode ser retomada — status atual é '{run.get('status')}' "
-            "(só runs 'assumed' podem continuar)."
+            "(só runs 'assumed' ou 'paused' podem continuar)."
         )
+    is_paused = run.get("status") == store.RUN_PAUSED
 
-    # Determina a etapa para continuar
     current_step = run.get("step") or "?"
     next_step = (req.next_step or "").strip() or current_step
 
-    # Marca a run para CONTINUAR (run_control fará a thread acordar)
     run_control.request_resume(run_id)
 
-    # Retoma a execução marcando como RUNNING de novo
-    # Se next_step foi especificado, atualiza também o step
+    if is_paused:
+        # Run PAUSADA: o runner está vivo num loop de espera — request_resume
+        # já fez o loop sair e o runner atualiza status sozinho.
+        # Não atualizamos o store aqui para evitar race com o runner.
+        return {
+            "run_id": run_id,
+            "resumed": True,
+            "current_step": current_step,
+            "resuming_from_step": current_step,
+            "step_changed": False,
+            "message": f"Run retomada — continuando da etapa '{current_step}'.",
+        }
+
+    # Run ASSUMIDA: pipeline já acabou, precisa re-enfileirar manualmente
     store.update_run(
         run_id,
         status=store.RUN_RUNNING,
-        step=next_step,  # Atualiza para a nova etapa (ou mantém a mesma)
-        error=None,  # Limpa mensagem anterior
+        step=next_step,
+        error=None,
     )
-
     return {
         "run_id": run_id,
         "resumed": True,
@@ -1783,16 +1819,17 @@ class EnqueueReq(BaseModel):
     # abre em no_proxy. Mesmo efeito do toggle do modo Avulso, agora no Lote.
     use_proxy: bool = True
     proxy_type: str = "datacenter"  # datacenter | residential | mobile
-    sms_option: Optional[str] = None  # 'facebook' | 'other' | 'sms24h' | 'smsrush' | None
+    sms_option: Optional[str] = None  # 'facebook' | 'other_1' | 'other_2' | 'other_3' | 'sms24h' | 'smsrush' | None
     sms_ddd: Optional[str] = None     # DDD filter (2 dígitos); vazio/null = aleatório
     smsrush_server: Optional[int] = None  # servidor SMSRush (1–4, vem do dropdown)
     sms_fallback_option: Optional[str] = None  # 2ª provedora SMS p/ recuperação
     dual_bm: bool = False  # True = reserva 2º CNPJ e cria 2 BMs por perfil
     browser_provider: str = "adspower"  # "adspower" | "ixbrowser"
     waba_enabled: bool = False  # True = cria WABA antes da verificação
+    stop_after_ad_account: bool = False  # True = encerra após criar conta de anúncios
 
 
-def _do_enqueue(count: int, use_proxy: bool = True, sms_option: Optional[str] = None, sms_ddd: Optional[str] = None, smsrush_server: Optional[int] = None, sms_fallback_option: Optional[str] = None, dual_bm: bool = False, browser_provider: str = "adspower", waba_enabled: bool = False) -> dict[str, Any]:
+def _do_enqueue(count: int, use_proxy: bool = True, sms_option: Optional[str] = None, sms_ddd: Optional[str] = None, smsrush_server: Optional[int] = None, sms_fallback_option: Optional[str] = None, dual_bm: bool = False, browser_provider: str = "adspower", waba_enabled: bool = False, stop_after_ad_account: bool = False) -> dict[str, Any]:
     """Função auxiliar para enfileirar runs (usada por enqueue e autopilot).
 
     ``sms_option`` ('facebook'|'other'|'sms24h'|'smsrush'|None) escolhe o preset
@@ -1863,6 +1900,7 @@ def _do_enqueue(count: int, use_proxy: bool = True, sms_option: Optional[str] = 
             sms_fallback_option=(sms_fallback_option or None),
             browser_provider=browser_provider,
             waba_enabled=waba_enabled,
+            stop_after_ad_account=stop_after_ad_account,
             **infra,
         )
         # Escalonamento: a 1ª run começa na hora; cada seguinte espera
@@ -1882,6 +1920,8 @@ def _do_enqueue(count: int, use_proxy: bool = True, sms_option: Optional[str] = 
                 _run_update["cnpj2"] = cnpj2_val
             if browser_provider != "adspower":
                 _run_update["browser_provider"] = browser_provider
+            if stop_after_ad_account:
+                _run_update["stop_after_ad_account"] = 1
             if _run_update:
                 store.update_run(rid, **_run_update)
         except Exception:  # noqa: BLE001
@@ -2008,7 +2048,7 @@ def enqueue(req: EnqueueReq) -> dict[str, Any]:
     (4 slots + 6 slots) e quer 5 runs, usa 4 da 1ª e 1 da 2ª automaticamente.
     Cada run pega a conta CF correspondente em ordem (round-robin inteligente).
     """
-    return _do_enqueue(req.count, req.use_proxy, sms_option=req.sms_option, sms_ddd=req.sms_ddd, smsrush_server=req.smsrush_server, sms_fallback_option=req.sms_fallback_option, dual_bm=req.dual_bm, browser_provider=req.browser_provider, waba_enabled=req.waba_enabled)
+    return _do_enqueue(req.count, req.use_proxy, sms_option=req.sms_option, sms_ddd=req.sms_ddd, smsrush_server=req.smsrush_server, sms_fallback_option=req.sms_fallback_option, dual_bm=req.dual_bm, browser_provider=req.browser_provider, waba_enabled=req.waba_enabled, stop_after_ad_account=req.stop_after_ad_account)
 
 
 class ManualReq(BaseModel):
@@ -2094,6 +2134,7 @@ class SettingsReq(BaseModel):
     cloudflare_account_id: Optional[str] = None
     cloudflare_api_token: Optional[str] = None
     cloudflare_worker_name: Optional[str] = None
+    default_template: Optional[str] = None
 
 
 @app.post("/api/settings")
@@ -2932,6 +2973,7 @@ def _cloudflare_domain_view(d: dict) -> dict:
         "remaining": d.get("remaining"),
         "dns_ok": d.get("dns_ok"),
         "created_at": d.get("created_at"),
+        "priority": d.get("priority", 0),
     }
 
 
@@ -3063,6 +3105,17 @@ def cloudflare_domains_quota(domain: str, req: DomainQuotaReq) -> list:
     row = store.cloudflare_set_quota(domain, remaining=req.remaining, cap=req.cap)
     if not row:
         raise HTTPException(404, f"Domínio Cloudflare '{domain}' não cadastrado.")
+    return cloudflare_domains_list()
+
+
+class CloudflareDomainReorderReq(BaseModel):
+    domains: list[str]
+
+
+@app.post("/api/cloudflare/domains/reorder")
+def cloudflare_domains_reorder(req: CloudflareDomainReorderReq) -> list:
+    """Reordena prioridade dos domínios Cloudflare (drag-and-drop)."""
+    store.reorder_cloudflare_domains(req.domains)
     return cloudflare_domains_list()
 
 
@@ -3476,7 +3529,7 @@ class ManualSiteReq(BaseModel):
     metatag: Optional[str] = None
     domain: Optional[str] = None          # domínio-base escolhido (Cloudflare)
     fields: Optional[dict] = None         # campos editáveis (razao_social, telefone, …)
-    template: Optional[str] = None        # 'classic' | 'professional'
+    template: Optional[str] = None        # 'classic' | 'professional' | 'nextgen' | 'premium' | 'corporate'
 
 
 @app.post("/api/manual-site/publish")
@@ -4008,3 +4061,123 @@ async def comprovante_generate(req: ComprovanteGenReq) -> dict[str, Any]:
 from crm_api import register_crm_routes  # noqa: E402
 
 register_crm_routes(app)
+
+
+# --- FB-Creator (criação de contas Facebook) --------------------------------
+from core.fb_creator import fb_creator_manager, FbCreatorJob  # noqa: E402
+
+
+class FbCreatorStartReq(BaseModel):
+    count: int = 1
+    max_concurrent: int = 1
+    os_type: str = "android"
+    gender: str = "random"
+    proxy_mode: str = "none"
+    proxies: list[dict[str, Any]] = []
+    use_sms: bool = True
+    use_email: bool = False
+    sms_provider: str = "numero_virtual"
+    sms_service_name: str = "Facebook"
+    sms_service_id: int = 60033
+    sms_target_price: int = 130
+    sms_purchase_api_id: int = 1
+    sms_operator: str = "vivo"
+    sms_timeout: int = 240
+    browser_type: str = "ixbrowser"
+    custom_emails: list[str] = []
+
+
+@app.post("/api/fb-creator/start")
+async def fb_creator_start(req: FbCreatorStartReq) -> dict[str, Any]:
+    """Inicia um batch de criação de contas Facebook."""
+    from config import NUMERO_VIRTUAL_API_KEY as _nv_key  # noqa: PLC0415
+    from config import CAPSOLVER_API_KEY as _cap_key  # noqa: PLC0415
+    from config import SMS24H_ORG_API_KEY as _s24h_key  # noqa: PLC0415
+
+    sms_key = _s24h_key if req.sms_provider == "sms24h_org" else _nv_key
+    count = max(1, min(req.count, 50))
+    concurrent = max(1, min(req.max_concurrent, 10))
+    result = await fb_creator_manager.start_batch(
+        count=count,
+        max_concurrent=concurrent,
+        os_type=req.os_type,
+        gender=req.gender,
+        proxy_mode=req.proxy_mode,
+        proxies=req.proxies,
+        sms_api_key=sms_key,
+        capsolver_api_key=_cap_key,
+        use_sms=req.use_sms,
+        use_email=req.use_email,
+        sms_provider=req.sms_provider,
+        sms_service_name=req.sms_service_name,
+        sms_service_id=req.sms_service_id,
+        sms_target_price=req.sms_target_price,
+        sms_purchase_api_id=req.sms_purchase_api_id,
+        sms_operator=req.sms_operator,
+        sms_timeout=req.sms_timeout,
+        browser_type=req.browser_type,
+        custom_emails=req.custom_emails,
+    )
+    return result
+
+
+@app.get("/api/fb-creator/stats")
+def fb_creator_stats() -> dict[str, Any]:
+    return fb_creator_manager.stats()
+
+
+@app.get("/api/fb-creator/jobs")
+def fb_creator_jobs() -> list[dict[str, Any]]:
+    return fb_creator_manager.get_jobs()
+
+
+@app.get("/api/fb-creator/jobs/{job_id}")
+def fb_creator_job(job_id: str) -> dict[str, Any]:
+    job = fb_creator_manager.jobs.get(job_id)
+    if job is None:
+        raise HTTPException(404, "Job não encontrado.")
+    return job.to_dict()
+
+
+@app.get("/api/fb-creator/jobs/{job_id}/logs")
+def fb_creator_job_logs(job_id: str) -> dict[str, Any]:
+    job = fb_creator_manager.jobs.get(job_id)
+    if job is None:
+        raise HTTPException(404, "Job não encontrado.")
+    return {"job_id": job_id, "logs": job.log}
+
+
+@app.post("/api/fb-creator/stop")
+async def fb_creator_stop() -> dict[str, Any]:
+    return await fb_creator_manager.stop()
+
+
+@app.get("/api/fb-creator/accounts")
+def fb_creator_accounts() -> list[dict[str, Any]]:
+    """Lista contas criadas (persistidas em created_accounts.json)."""
+    import json as _json
+    from pathlib import Path as _Path
+    f = _Path(__file__).resolve().parent / "created_accounts.json"
+    if not f.exists():
+        return []
+    try:
+        return _json.loads(f.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+@app.get("/api/fb-creator/sms-balance")
+async def fb_creator_sms_balance(provider: str = "numero_virtual") -> dict[str, Any]:
+    """Consulta saldo do provedor SMS."""
+    try:
+        if provider == "sms24h_org":
+            from core.api_clients import Sms24hOrgClient  # noqa: PLC0415
+            async with Sms24hOrgClient() as sms:
+                balance = await sms.get_balance()
+        else:
+            from core.api_clients import Sms24hClient  # noqa: PLC0415
+            async with Sms24hClient() as sms:
+                balance = await sms.get_balance()
+        return {"balance": balance, "currency": "BRL", "provider": provider}
+    except Exception as exc:
+        return {"balance": None, "error": str(exc), "provider": provider}

@@ -103,6 +103,7 @@ export const api = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),
   }),
+  pauseRun: (id) => http(`/runs/${id}/pause`, { method: 'POST' }),
   assumeRun: (id) => http(`/runs/${id}/assume`, { method: 'POST' }),
   resumeRun: (id, nextStep = null) => http(`/runs/${id}/resume`, {
     method: 'POST',
@@ -163,9 +164,9 @@ export const api = {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ values }),
   }),
-  enqueue: (count, useProxy = true, proxyType = 'datacenter', smsOption = null, smsDdd = null, smsRushServer = null, smsFallbackOption = null, dualBm = false, browserProvider = 'adspower', wabaEnabled = false) => http('/jobs/enqueue', {
+  enqueue: (count, useProxy = true, proxyType = 'datacenter', smsOption = null, smsDdd = null, smsRushServer = null, smsFallbackOption = null, dualBm = false, browserProvider = 'adspower', wabaEnabled = false, stopAfterAdAccount = false) => http('/jobs/enqueue', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ count, use_proxy: useProxy, proxy_type: proxyType, sms_option: smsOption, sms_ddd: smsDdd || null, smsrush_server: smsRushServer ? Number(smsRushServer) : null, sms_fallback_option: smsFallbackOption || null, dual_bm: dualBm, browser_provider: browserProvider, waba_enabled: wabaEnabled }),
+    body: JSON.stringify({ count, use_proxy: useProxy, proxy_type: proxyType, sms_option: smsOption, sms_ddd: smsDdd || null, smsrush_server: smsRushServer ? Number(smsRushServer) : null, sms_fallback_option: smsFallbackOption || null, dual_bm: dualBm, browser_provider: browserProvider, waba_enabled: wabaEnabled, stop_after_ad_account: stopAfterAdAccount }),
   }),
   loginOnly: (count, useProxy = true) => http('/jobs/login-only', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -184,6 +185,7 @@ export const api = {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   }),
+  smsBalance: (provider) => http(`/fb-creator/sms-balance?provider=${provider}`),
   // Aba "APIs" — editor visual das chaves do .env (SMS, captcha, CNPJ, etc.).
   getApis: () => http('/apis'),
   saveApis: (values) => http('/apis', {
@@ -231,6 +233,10 @@ export const api = {
     body: JSON.stringify({ remaining, cap }),
   }),
   cloudflareDomainStatus: (domain) => http(`/cloudflare/domains/${encodeURIComponent(domain)}/status`),
+  reorderCloudflareDomains: (domains) => http('/cloudflare/domains/reorder', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ domains }),
+  }),
   exportAccounts: () => http('/pools/accounts/export'),
   resetWrongPasswordAccount: (email) => http('/pools/accounts/reset-wrong-password', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },

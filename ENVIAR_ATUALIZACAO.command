@@ -21,7 +21,7 @@ read -r -p "Mensagem do commit (ou Enter para padrão): " MSG
 git commit -m "$MSG"
 
 echo "[3/3] Enviando para o GitHub..."
-git push vortex main
+git push origin main
 
 echo ""
 echo "════════════════════════════════════════════════════════════════"

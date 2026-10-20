@@ -94,12 +94,20 @@ export default function GerarSite() {
   const [msg, setMsg] = useState(null)
   const [result, setResult] = useState(null)
   const [previewSrc, setPreviewSrc] = useState("")
-  const [template, setTemplate] = useState("professional")
+  const [template, setTemplate] = useState("corporate")
   const [poolCnpjs, setPoolCnpjs] = useState([])
   const [poolMeta, setPoolMeta] = useState({})
   const [poolOpen, setPoolOpen] = useState(false)
 
   const setField = (k, v) => setFields((f) => ({ ...f, [k]: v }))
+
+  // Busca o template padrão das settings ao montar.
+  useEffect(() => {
+    api.settings().then((s) => {
+      const dt = s?.default_template?.value
+      if (dt && ["classic", "professional", "nextgen", "premium", "corporate"].includes(dt)) setTemplate(dt)
+    }).catch(() => {})
+  }, [])
 
   // Pool de CNPJs — carrega uma vez e consulta dados sequencialmente.
   const loadPool = () => {
@@ -136,7 +144,7 @@ export default function GerarSite() {
     try {
       const emp = buildEmpresa(fields, (cnpj || "").replace(/\D+/g, ""))
       const base = `https://preview.${domain}/?__preview=${encodeURIComponent(b64utf8(JSON.stringify(emp)))}`
-      return template === "professional" ? `${base}&__template=professional` : base
+      return template !== "classic" ? `${base}&__template=${template}` : base
     } catch { return "" }
   }, [fields, domain, loaded, cnpj, template])
 
@@ -192,7 +200,7 @@ export default function GerarSite() {
   // Limpa o formulário pra criar outro domínio sem precisar dar F5.
   const novoSite = () => {
     setCnpj(""); setFields(EMPTY_FIELDS); setSlug(""); setDomain(""); setDomains([])
-    setMetatag(""); setTemplate("professional"); setExisting(null); setLoaded(false)
+    setMetatag(""); setTemplate("corporate"); setExisting(null); setLoaded(false)
     setResult(null); setPreviewSrc(""); setMsg(null)
   }
 
@@ -308,21 +316,26 @@ export default function GerarSite() {
                 </div>
                 <div className="mb-4">
                   <span className="block text-xs font-semibold text-neutral-500 mb-2">Template do site</span>
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 flex-wrap">
                     {[
-                      { id: "professional", label: "Profissional", desc: "Claro, corporativo — ideal para aprovação Meta" },
-                      { id: "classic", label: "Clássico", desc: "Escuro, original" },
-                    ].map((t) => (
+                      { id: "corporate", label: "Corporate", desc: "Claro, navy + teal — perfil completo", clr: "teal" },
+                      { id: "premium", label: "Premium", desc: "Amber escuro — elegante, confiável", clr: "amber" },
+                      { id: "nextgen", label: "Nova Geração", desc: "Glassmorphism violet — moderno 2026", clr: "violet" },
+                      { id: "professional", label: "Profissional", desc: "Claro, corporativo — branco", clr: "blue" },
+                      { id: "classic", label: "Clássico", desc: "Escuro, original — verde neon", clr: "emerald" },
+                    ].map((t) => {
+                      const sel = template === t.id
+                      const rings = { teal: "border-teal-500 bg-teal-50 dark:bg-teal-950/30 dark:border-teal-400", amber: "border-amber-500 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-400", violet: "border-violet-500 bg-violet-50 dark:bg-violet-950/30 dark:border-violet-400", blue: "border-blue-500 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-400", emerald: "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-400" }
+                      const txts = { teal: "text-teal-700 dark:text-teal-300", amber: "text-amber-700 dark:text-amber-300", violet: "text-violet-700 dark:text-violet-300", blue: "text-blue-700 dark:text-blue-300", emerald: "text-emerald-700 dark:text-emerald-300" }
+                      return (
                       <button key={t.id} type="button" onClick={() => setTemplate(t.id)}
-                        className={`flex-1 p-3 rounded-lg border-2 text-left transition ${
-                          template === t.id
-                            ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-400"
-                            : "border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600"
+                        className={`flex-1 min-w-[110px] p-3 rounded-lg border-2 text-left transition ${
+                          sel ? rings[t.clr] : "border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600"
                         }`}>
-                        <span className={`block text-sm font-semibold ${template === t.id ? "text-blue-700 dark:text-blue-300" : "text-neutral-700 dark:text-neutral-300"}`}>{t.label}</span>
+                        <span className={`block text-sm font-semibold ${sel ? txts[t.clr] : "text-neutral-700 dark:text-neutral-300"}`}>{t.label}</span>
                         <span className="block text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">{t.desc}</span>
                       </button>
-                    ))}
+                    )})}
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">

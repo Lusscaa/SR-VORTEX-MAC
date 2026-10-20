@@ -3,7 +3,7 @@ import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Building2, Rocket, History,
   Moon, Sun, Settings as SettingsIcon, LogOut, AlertCircle, Globe, KeyRound,
-  Send,
+  Send, UserPlus,
 } from 'lucide-react'
 
 // Emblema próprio do Bot-Sr.Vortex — espiral/vórtice (SVG inline, sem plágio).
@@ -110,6 +110,7 @@ import Apis from './pages/Apis.jsx'
 import GerarSite from './pages/GerarSite.jsx'
 import SoftBlockedAccounts from './pages/SoftBlockedAccounts.jsx'
 import PendingDiscard from './pages/PendingDiscard.jsx'
+import FbCreator from './pages/FbCreator.jsx'
 import Login from './pages/Login.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { auth, logout } from './api.js'
@@ -123,6 +124,7 @@ const NAV = [
   { to: '/gerar-site', label: 'Gerar Site / PDFs', icon: Globe },
   { to: '/historico', label: 'Histórico', icon: History },
   { to: '/pending-discard', label: 'Descartes', icon: AlertCircle },
+  { to: '/fb-creator', label: 'FB-Creator', icon: UserPlus },
 ]
 
 function useDarkMode() {
@@ -339,6 +341,7 @@ export default function App() {
               <Route path="/settings" element={<Settings />} />
               <Route path="/apis" element={<Apis />} />
               <Route path="/gerar-site" element={<GerarSite />} />
+              <Route path="/fb-creator" element={<FbCreator />} />
               {/* rotas antigas → novos destinos (links/bookmarks não quebram) */}
               <Route path="/lote" element={<Navigate to="/disparar" replace />} />
               <Route path="/manual" element={<Navigate to="/disparar" replace />} />

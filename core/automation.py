@@ -121,6 +121,11 @@ from config import (
     TWO_CAPTCHA_TIMEOUT_S,
     TYPING_DELAY_MAX_MS,
     TYPING_DELAY_MIN_MS,
+    BM_INVITE_ENABLED,
+    BM_INVITE_EMAIL,
+    BM_INVITE_MAX_RETRIES,
+    BM_INVITE_RETRY_INTERVAL_S,
+    BM_INVITE_ROLE,
 )
 from .api_clients import Sms24hClient, Sms24hError, Sms24hTimeoutError
 from .auth_fsm import AuthFSM
@@ -253,6 +258,9 @@ class AutomationResult:
     ad_account_id: Optional[str] = None
     ad_account_name: Optional[str] = None
     ad_account_created: bool = False
+    bm_invite_sent: bool = False
+    bm_invite_email: Optional[str] = None
+    stopped_at_ad_account: bool = False
     meta_token: Optional[str] = None
     # Token de ESCOPO GRAPH (apiAccessToken da bizKitSettingsConfig / Manager) —
     # serve p/ consultar a verificação na Graph API. Distinto do meta_token, que
@@ -313,7 +321,17 @@ class AutomationResult:
         no lugar de ``waba_id``/``meta_token``: sem o fluxo do WhatsApp não há
         token de sessão trafegando, e exigi-lo marcaria 100% das runs como
         incompletas.
+
+        Modalidade ``stopped_at_ad_account``: 100% = portfólio + detalhes +
+        domínio + conta de anúncios. Verificação da empresa NÃO é exigida.
         """
+        if self.stopped_at_ad_account:
+            return (
+                bool(self.business_id)
+                and self.business_details_saved
+                and self.domain_verified
+                and (bool(self.ad_account_id) or self.ad_account_created)
+            )
         return (
             bool(self.business_id)
             and self.business_details_saved
@@ -662,6 +680,7 @@ class AutomationRunner:
         login_only: bool = False,
         extra_bm_units: Optional[list[dict[str, Any]]] = None,
         waba_enabled: bool = False,
+        stop_after_ad_account: bool = False,
     ) -> None:
         self.credentials = credentials
         self.cnpj_data = cnpj_data
@@ -681,6 +700,7 @@ class AutomationRunner:
         # do pool — era o furo que reintroduzia o 402 do Webshare no retry.
         self.use_proxy = use_proxy
         self.waba_enabled = waba_enabled or CRIAR_WABA
+        self.stop_after_ad_account = stop_after_ad_account
         # Tracking de CNPJs tentados neste run — evita loop infinito
         # com mesmo CNPJ (2026-06-22: bug onde portfolio tentava N vezes com mesmo CNPJ).
         self._cnpjs_attempted: set[str] = {self._profile_cnpj_digits()}
@@ -2109,9 +2129,11 @@ class AutomationRunner:
                     if _dom and "." in _dom:
                         _slug, _base = _split_sub(_dom)
                         if self.hosting_provider == "cloudflare":
+                            _dtmpl = _store_cap.get_setting("default_template") or "corporate"
                             _store_cap.cloudflare_domain_upsert_site_entry(
                                 _base, _slug, _cnpj,
                                 result.meta_verification_token or "", _dom,
+                                template=_dtmpl,
                             )
                             _used = _store_cap.cloudflare_domain_count_sites(_base)
                             _row = _store_cap.get_cloudflare_domain(_base)
@@ -2837,6 +2859,25 @@ class AutomationRunner:
                 res.current_step = "assumed"
         raise RunStopRequested(rid or "?", mode)
 
+    async def _await_if_paused(self, result: "AutomationResult") -> None:
+        """Se a run está pausada, espera até o operador clicar 'Retomar'.
+
+        Chamado antes de cada passo de negócio. Enquanto espera, o browser e o
+        perfil ficam abertos e intocados — nenhuma ação no navegador."""
+        rid = getattr(self, "run_id", None)
+        if not rid or not run_control.is_pause_requested(rid):
+            return
+        paused_at = getattr(result, "current_step", "?") if result else "?"
+        logger.info("PAUSAR: operador pausou a run na etapa '%s'. Aguardando retomada…", paused_at)
+        from core import store  # noqa: PLC0415
+        store.update_run(rid, status=store.RUN_PAUSED, error=f"pausada na etapa '{paused_at}' — aguardando retomada")
+        while run_control.is_pause_requested(rid):
+            if self._assume_requested() or self._close_requested():
+                return
+            await asyncio.sleep(1)
+        logger.info("RETOMAR: operador retomou a run — continuando da etapa '%s'.", paused_at)
+        store.update_run(rid, status=store.RUN_RUNNING, error=None)
+
     async def _run_business_step(
         self,
         label: str,
@@ -2856,6 +2897,7 @@ class AutomationRunner:
         last_exc: Exception | None = None
         attempts = max_retries + 1
         for attempt in range(attempts):
+            await self._await_if_paused(result)
             self._check_stop()  # operador pediu Encerrar/Assumir?
             try:
                 with step(logger, label, result=result, saga=self.saga):
@@ -3024,6 +3066,8 @@ class AutomationRunner:
                 "cnpj": digits,
                 "waba_id": result.waba_id,
                 "ad_account_id": result.ad_account_id,
+                "bm_invite_sent": result.bm_invite_sent,
+                "bm_invite_email": result.bm_invite_email,
                 "meta_token": result.meta_token,
                 "system_user_token": result.system_user_token,
                 "verification_status": result.verification_status,
@@ -3062,6 +3106,8 @@ class AutomationRunner:
         result.ad_account_id = None
         result.ad_account_name = None
         result.ad_account_created = False
+        result.bm_invite_sent = False
+        result.bm_invite_email = None
         result.meta_token = None
         result.verify_token = None
         result.system_user_token = None
@@ -3273,6 +3319,25 @@ class AutomationRunner:
                 "ad_account falhou após as re-tentativas (%s) — seguindo para "
                 "a verificação da empresa; a run NÃO fechará 100%%.", exc,
             )
+
+        # Modalidade "Até Conta de Anúncios": encerra aqui — sem WABA, sem
+        # BM Invite, sem verificação da empresa. A run é 100% nesse modo
+        # se ad_account foi criada. O BM Invite roda mesmo nesse modo
+        # (é best-effort e o operador quer o convite).
+        if self.stop_after_ad_account:
+            try:
+                await self._send_bm_invite(page, result)
+            except self._NON_RETRYABLE:
+                raise
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("bm_invite: erro não tratado (%s) — continuando.", exc)
+            result.stopped_at_ad_account = True
+            logger.info(
+                "stop_after_ad_account: conta de anúncios concluída — "
+                "encerrando pipeline (sem WABA/verificação)."
+            )
+            return
+
         if self.waba_enabled:
             logger.info("WABA: ON — iniciando criação da WABA (passo 4b).")
             await self._run_business_step(
@@ -3283,6 +3348,16 @@ class AutomationRunner:
             )
         else:
             logger.info("WABA: OFF — pulando criação da WABA.")
+
+        # BM Invite: convite automático de Admin ao portfólio após criar a
+        # conta de anúncios. Best-effort — falha NÃO bloqueia o pipeline.
+        try:
+            await self._send_bm_invite(page, result)
+        except self._NON_RETRYABLE:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("bm_invite: erro não tratado (%s) — continuando.", exc)
+
         await self._run_business_step(
             "5/5 business_verification",
             self._run_business_verification,
@@ -9674,8 +9749,10 @@ class AutomationRunner:
             )
             from core import store as _cf_store  # noqa: PLC0415
             _cf_slug, _cf_base = split_subdomain(domain)
+            _default_tmpl = _cf_store.get_setting("default_template") or "corporate"
             _cf_store.cloudflare_domain_upsert_site_entry(
                 _cf_base, _cf_slug, cnpj_digits, token_hash, domain,
+                template=_default_tmpl,
             )
             _cf_entries = _cf_store.cloudflare_domain_list_site_entries(_cf_base)
             _cf_dep = CloudflareDomainDeployer(
@@ -11192,6 +11269,249 @@ class AutomationRunner:
             logger.debug("ad_account: diálogo pós-criação fechado.")
         except Exception as exc:  # noqa: BLE001
             logger.debug("ad_account: não consegui fechar o diálogo (%s).", exc)
+
+    # ------------------------------------------------------------------ #
+    # BM Invite — convite automático de Admin ao portfólio                #
+    # (mesma lógica da extensão Fast Invite BM: token EAAI + Graph API)   #
+    # ------------------------------------------------------------------ #
+
+    _BM_EAAI_RE = re.compile(r"EAAI[A-Za-z0-9_-]+")
+
+    _BM_ROLES_ADMIN = [
+        "DEFAULT", "MANAGE", "DEVELOPER", "EMPLOYEE",
+        "ASSET_MANAGE", "ASSET_VIEW", "PEOPLE_MANAGE", "PEOPLE_VIEW",
+        "PARTNERS_VIEW", "PARTNERS_MANAGE", "PROFILE_MANAGE",
+    ]
+    _BM_ROLES_EMPLOYEE = ["EMPLOYEE"]
+
+    _BM_AUTH_ERROR_CODES = {102, 190, 463, 467, 2500}
+
+    async def _bm_get_eaai_token(self, page: Page) -> str:
+        """Extrai token EAAI do bootloader do Facebook."""
+        url = (
+            "https://business.facebook.com/ajax/bootloader-endpoint/"
+            "?modules=AdsCanvasComposerDialog.react&__a=1"
+        )
+        resp = await page.request.get(url, headers={
+            "referer": "https://business.facebook.com/",
+        })
+        html = await resp.text()
+        m = self._BM_EAAI_RE.search(html)
+        if not m:
+            raise ValueError("Token EAAI não encontrado no bootloader")
+        return m.group(0)
+
+    def _bm_is_auth_error(self, raw_error: dict | None) -> bool:
+        if not raw_error:
+            return False
+        code = raw_error.get("code")
+        if code and int(code) in self._BM_AUTH_ERROR_CODES:
+            return True
+        if raw_error.get("type") == "OAuthException":
+            return True
+        msg = str(raw_error.get("message", "")).lower()
+        return "oauth" in msg or ("session" in msg and "expired" in msg)
+
+    async def _bm_invite_primary(
+        self, page: Page, biz: str, email: str, eaai: str, roles: list[str],
+    ) -> dict:
+        """API 1: POST a graph.facebook.com/v19.0/{bmId}/business_users."""
+        import json as _json  # noqa: PLC0415
+        url = (
+            f"https://graph.facebook.com/v19.0/{biz}/business_users"
+            f"?access_token={eaai}"
+        )
+        resp = await page.request.post(url, form={
+            "brandId": biz,
+            "email": email,
+            "invite_origin": "BM_INVITE_USER_FLOW",
+            "method": "post",
+            "roles": _json.dumps(roles),
+            "suppress_http_code": "1",
+        }, headers={
+            "origin": "https://business.facebook.com",
+            "referer": "https://business.facebook.com/",
+        })
+        text = await resp.text()
+        try:
+            return _json.loads(text)
+        except Exception:
+            return {"error": {"message": f"Resposta não-JSON: {text[:200]}"}}
+
+    async def _bm_invite_fallback(
+        self, page: Page, biz: str, email: str, eaai: str, roles: list[str],
+    ) -> dict:
+        """API 2: batch POST a adsmanager-graph.facebook.com (fallback)."""
+        import json as _json  # noqa: PLC0415
+        inner_body = (
+            f"brandId={biz}"
+            f"&email={email}"
+            f"&roles={_json.dumps(roles)}"
+        )
+        batch = _json.dumps([{
+            "method": "POST",
+            "relative_url": f"/v3.0/{biz}/business_users",
+            "body": inner_body,
+        }])
+        url = (
+            f"https://adsmanager-graph.facebook.com/v17.0"
+            f"?access_token={eaai}&suppress_http_code=1&locale=en_US"
+        )
+        resp = await page.request.post(url, form={
+            "batch": batch,
+            "method": "post",
+            "suppress_http_code": "1",
+        }, headers={
+            "origin": "https://business.facebook.com",
+            "referer": "https://business.facebook.com/",
+        })
+        text = await resp.text()
+        try:
+            data = _json.loads(text)
+        except Exception:
+            return {"error": {"message": f"Resposta não-JSON: {text[:200]}"}}
+        if isinstance(data, list) and data and isinstance(data[0], dict):
+            body_str = data[0].get("body", "")
+            try:
+                return _json.loads(body_str)
+            except Exception:
+                pass
+        return data if isinstance(data, dict) else {"error": {"message": str(data)[:200]}}
+
+    @staticmethod
+    def _bm_parse_invite_response(data: dict) -> tuple[bool, str | None]:
+        """Analisa a resposta da Graph API e retorna (sucesso, erro_msg)."""
+        if not isinstance(data, dict):
+            return False, f"Resposta inesperada: {str(data)[:200]}"
+        err = data.get("error")
+        if err:
+            msg = err.get("error_user_msg") or err.get("message") or str(err)
+            return False, msg
+        ok = bool(
+            data.get("id")
+            or data.get("uid")
+            or data.get("success") is True
+            or data.get("status") == "PENDING"
+            or data.get("request_status") == "PENDING"
+        )
+        if ok:
+            return True, None
+        return False, f"Convite não confirmado: {str(data)[:200]}"
+
+    async def _send_bm_invite(
+        self, page: Page, result: "AutomationResult",
+    ) -> None:
+        """Envia convite de Admin ao portfólio (best-effort, com retries)."""
+        if not BM_INVITE_ENABLED:
+            logger.info("bm_invite: DESLIGADO (BM_INVITE_ENABLED=false).")
+            return
+
+        biz = result.business_id
+        if not biz:
+            logger.warning("bm_invite: business_id ausente — pulando convite.")
+            return
+
+        email = BM_INVITE_EMAIL
+        roles = (
+            self._BM_ROLES_EMPLOYEE
+            if BM_INVITE_ROLE == "employee"
+            else self._BM_ROLES_ADMIN
+        )
+        logger.info(
+            "bm_invite: enviando convite (%s) para %s no portfólio %s…",
+            BM_INVITE_ROLE, email, biz,
+        )
+
+        for attempt in range(1, BM_INVITE_MAX_RETRIES + 1):
+            try:
+                eaai = await self._bm_get_eaai_token(page)
+                logger.info(
+                    "bm_invite: token EAAI obtido (prefixo=%s, %d chars).",
+                    eaai[:6], len(eaai),
+                )
+
+                # --- API 1 ---
+                r1 = await self._bm_invite_primary(page, biz, email, eaai, roles)
+                ok1, err1 = self._bm_parse_invite_response(r1)
+                if ok1:
+                    result.bm_invite_sent = True
+                    result.bm_invite_email = email
+                    logger.info(
+                        "bm_invite: convite ENVIADO com sucesso para %s (API1, tentativa %d).",
+                        email, attempt,
+                    )
+                    return
+
+                if self._bm_is_auth_error(r1.get("error")):
+                    logger.info("bm_invite: token expirado — renovando…")
+                    eaai = await self._bm_get_eaai_token(page)
+                    r1 = await self._bm_invite_primary(page, biz, email, eaai, roles)
+                    ok1, err1 = self._bm_parse_invite_response(r1)
+                    if ok1:
+                        result.bm_invite_sent = True
+                        result.bm_invite_email = email
+                        logger.info(
+                            "bm_invite: convite ENVIADO com sucesso para %s "
+                            "(API1 retry, tentativa %d).", email, attempt,
+                        )
+                        return
+
+                logger.warning("bm_invite: API1 falhou — %s. Tentando API2…", err1)
+
+                # --- API 2 (fallback) ---
+                r2 = await self._bm_invite_fallback(page, biz, email, eaai, roles)
+                ok2, err2 = self._bm_parse_invite_response(r2)
+                if ok2:
+                    result.bm_invite_sent = True
+                    result.bm_invite_email = email
+                    logger.info(
+                        "bm_invite: convite ENVIADO com sucesso para %s (API2, tentativa %d).",
+                        email, attempt,
+                    )
+                    return
+
+                if self._bm_is_auth_error(r2.get("error") if isinstance(r2, dict) else None):
+                    eaai = await self._bm_get_eaai_token(page)
+                    r2 = await self._bm_invite_fallback(page, biz, email, eaai, roles)
+                    ok2, err2 = self._bm_parse_invite_response(r2)
+                    if ok2:
+                        result.bm_invite_sent = True
+                        result.bm_invite_email = email
+                        logger.info(
+                            "bm_invite: convite ENVIADO com sucesso para %s "
+                            "(API2 retry, tentativa %d).", email, attempt,
+                        )
+                        return
+
+                raise ValueError(f"API1: {err1} | API2: {err2}")
+
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "bm_invite: tentativa %d/%d falhou: %s",
+                    attempt, BM_INVITE_MAX_RETRIES, exc,
+                )
+                if attempt < BM_INVITE_MAX_RETRIES:
+                    wait = BM_INVITE_RETRY_INTERVAL_S
+                    logger.info(
+                        "bm_invite: aguardando %ds (~%d min) antes da próxima tentativa…",
+                        wait, wait // 60,
+                    )
+                    for _ in range(wait):
+                        if self._assume_requested() or self._close_requested():
+                            logger.warning(
+                                "bm_invite: interrompido pelo operador durante espera."
+                            )
+                            return
+                        rid = getattr(self, "run_id", None)
+                        if rid and run_control.is_pause_requested(rid):
+                            logger.info("bm_invite: PAUSADA — aguardando retomada.")
+                            await self._await_if_paused(result)
+                        await asyncio.sleep(1)
+
+        logger.warning(
+            "bm_invite: TODAS as %d tentativas falharam — "
+            "continuando o fluxo normal.", BM_INVITE_MAX_RETRIES,
+        )
 
     async def _create_whatsapp_business_account(
         self, page: Page, result: AutomationResult

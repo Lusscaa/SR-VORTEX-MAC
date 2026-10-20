@@ -458,8 +458,272 @@ export default {
     @media (max-width: 980px) { .hero-grid, .grid-3, .grid-2, .footer-grid { grid-template-columns: 1fr; } .card-large, .card-full { grid-column: auto; } .hero h1 { font-size: 28px; } }
     @media (max-width: 640px) { .hero-main, .hero-side, .card, .legal-card { padding: 22px; } .hero { padding-top: 32px; } .section-title { font-size: 22px; } .hero h1 { font-size: 24px; } .topbar-inner { align-items: flex-start; } }`;
 
+    const _CSS_NEXTGEN = `* { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { --bg: #0c0a1a; --bg-2: #110e24; --panel: rgba(22, 18, 48, 0.82); --panel-2: rgba(139, 92, 246, 0.04); --stroke: rgba(139, 92, 246, 0.12); --text: #cbd5e1; --muted: #94a3b8; --white: #f1f5f9; --primary: #a78bfa; --primary-2: #8b5cf6; --accent: #c084fc; --glow: rgba(139, 92, 246, 0.20); --shadow: 0 8px 32px rgba(0, 0, 0, 0.40), 0 2px 8px rgba(139, 92, 246, 0.06); --radius-xl: 24px; --radius-lg: 18px; --radius-md: 14px; --container: 1140px; }
+    @keyframes shimmer { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+    html { scroll-behavior: smooth; }
+    body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--text); background: var(--bg); min-height: 100vh; line-height: 1.7; position: relative; }
+    body::before { content: ""; position: fixed; inset: 0; background: radial-gradient(ellipse 80% 50% at 20% 10%, rgba(139,92,246,0.13), transparent 55%), radial-gradient(ellipse 60% 40% at 80% 85%, rgba(168,85,247,0.09), transparent 50%), radial-gradient(ellipse 50% 50% at 50% 50%, rgba(99,102,241,0.06), transparent 60%); pointer-events: none; z-index: 0; }
+    body > * { position: relative; z-index: 1; }
+    a { color: var(--primary); text-decoration: none; transition: color 0.25s ease; }
+    a:hover { color: var(--accent); }
+    .container { width: 100%; max-width: var(--container); margin: 0 auto; padding: 0 22px; }
+    .topbar { position: sticky; top: 0; z-index: 100; background: rgba(12, 10, 26, 0.80); backdrop-filter: blur(20px) saturate(1.4); border-bottom: 1px solid rgba(139,92,246,0.08); }
+    .topbar-inner { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+    .logo-block { display: flex; flex-direction: column; gap: 3px; padding: 14px 0; }
+    .logo-block strong { color: var(--white); font-size: 17px; line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; }
+    .logo-block span { color: var(--muted); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .nav { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: 12px 0; }
+    .nav a { color: var(--muted); font-size: 13px; padding: 8px 14px; border-radius: 10px; font-weight: 500; transition: all 0.25s ease; }
+    .nav a:hover { background: rgba(139,92,246,0.08); color: var(--white); }
+    .hero { position: relative; padding: 64px 0 28px; }
+    .hero-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 22px; align-items: stretch; }
+    .glass-card { background: var(--panel); border: 1px solid var(--stroke); box-shadow: var(--shadow); border-radius: var(--radius-xl); overflow: hidden; backdrop-filter: blur(8px); }
+    .hero-main { padding: 36px; position: relative; }
+    .hero-main::before { content: ""; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(139,92,246,0.08), transparent 40%), linear-gradient(225deg, rgba(168,85,247,0.04), transparent 50%); pointer-events: none; }
+    .badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border: 1px solid rgba(139,92,246,0.25); background: rgba(139,92,246,0.10); color: #c4b5fd; border-radius: 999px; font-size: 12px; font-weight: 600; margin-bottom: 20px; letter-spacing: 0.02em; text-transform: uppercase; }
+    .hero h1 { font-size: 40px; line-height: 1.1; color: var(--white); max-width: 820px; margin-bottom: 14px; font-weight: 800; letter-spacing: -0.025em; background: linear-gradient(135deg, #f1f5f9, #c4b5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero p { font-size: 16px; color: var(--muted); max-width: 760px; line-height: 1.7; }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 22px; border-radius: 14px; font-weight: 600; font-size: 14px; border: 1px solid transparent; transition: all 0.3s ease; cursor: pointer; }
+    .btn-primary { background: linear-gradient(135deg, #8b5cf6, #a78bfa); color: #ffffff; box-shadow: 0 4px 16px var(--glow), inset 0 1px 0 rgba(255,255,255,0.10); }
+    .btn-primary:hover { background: linear-gradient(135deg, #7c3aed, #8b5cf6); transform: translateY(-2px); box-shadow: 0 8px 24px var(--glow), inset 0 1px 0 rgba(255,255,255,0.12); }
+    .btn-secondary { background: rgba(139,92,246,0.06); border-color: rgba(139,92,246,0.18); color: var(--white); backdrop-filter: blur(4px); }
+    .btn-secondary:hover { background: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.28); }
+    .hero-side { padding: 26px; display: grid; gap: 12px; align-content: center; }
+    .mini-stat { border-radius: 14px; border: 1px solid rgba(139,92,246,0.10); background: rgba(139,92,246,0.04); padding: 16px 18px; transition: border-color 0.3s ease, background 0.3s ease; }
+    .mini-stat:hover { border-color: rgba(139,92,246,0.22); background: rgba(139,92,246,0.08); }
+    .mini-stat .label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-bottom: 6px; }
+    .mini-stat .value { display: block; color: var(--white); font-size: 17px; font-weight: 700; line-height: 1.4; }
+    section { padding: 26px 0; }
+    .section-head { margin-bottom: 22px; }
+    .section-title { color: var(--white); font-size: 28px; line-height: 1.15; margin-bottom: 8px; font-weight: 700; letter-spacing: -0.02em; }
+    .section-text { color: var(--muted); max-width: 850px; font-size: 15px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+    .card { background: var(--panel); border: 1px solid var(--stroke); border-radius: var(--radius-lg); box-shadow: var(--shadow); padding: 24px; backdrop-filter: blur(6px); transition: border-color 0.3s ease, transform 0.3s ease; }
+    .card:hover { border-color: rgba(139,92,246,0.22); transform: translateY(-2px); }
+    .card h3 { color: var(--white); font-size: 18px; margin-bottom: 12px; font-weight: 700; }
+    .card p { color: var(--muted); font-size: 15px; line-height: 1.7; }
+    .info-list { display: grid; gap: 10px; }
+    .info-item { background: rgba(139,92,246,0.03); border: 1px solid rgba(139,92,246,0.08); border-radius: 12px; padding: 14px 16px; transition: background 0.25s ease; }
+    .info-item:hover { background: rgba(139,92,246,0.06); }
+    .info-item strong { display: block; color: var(--primary); font-size: 11px; font-weight: 600; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .info-item span { display: block; color: var(--text); font-size: 14px; word-break: break-word; }
+    .card-large { grid-column: span 2; }
+    .card-full { grid-column: 1 / -1; }
+    .highlight-box { display: grid; gap: 10px; margin-top: 16px; }
+    .highlight { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; background: rgba(139,92,246,0.06); border: 1px solid rgba(139,92,246,0.14); transition: background 0.25s ease; }
+    .highlight:hover { background: rgba(139,92,246,0.10); }
+    .highlight-dot { width: 8px; height: 8px; border-radius: 999px; background: linear-gradient(135deg, #8b5cf6, #a78bfa); box-shadow: 0 0 0 4px rgba(139,92,246,0.14); margin-top: 7px; flex-shrink: 0; }
+    .highlight div { color: var(--text); font-size: 14px; }
+    .highlight div strong { color: var(--white); }
+    .footer { margin-top: 36px; border-top: 1px solid rgba(139,92,246,0.08); background: rgba(12, 10, 26, 0.60); }
+    .footer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; padding: 34px 0 20px; }
+    .footer-col h4 { color: var(--white); font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+    .footer-col p, .footer-col a { color: var(--muted); font-size: 14px; }
+    .footer-col a { display: block; margin-bottom: 8px; transition: color 0.25s ease; }
+    .footer-col a:hover { color: var(--primary); }
+    .copyright { padding: 0 0 28px; color: #64748b; font-size: 12px; letter-spacing: 0.02em; }
+    .legal-wrapper { padding: 60px 0; }
+    .legal-card { background: var(--panel); border: 1px solid var(--stroke); border-radius: 20px; box-shadow: var(--shadow); padding: 36px; backdrop-filter: blur(6px); }
+    .legal-card h1 { color: var(--white); font-size: 32px; margin-bottom: 10px; font-weight: 800; letter-spacing: -0.02em; }
+    .legal-card p { color: var(--text); font-size: 15px; margin-bottom: 16px; line-height: 1.7; }
+    .legal-card h2 { color: var(--white); font-size: 18px; font-weight: 700; margin: 24px 0 10px; }
+    .top-space { margin-top: 12px; }
+    @media (max-width: 980px) { .hero-grid, .grid-3, .grid-2, .footer-grid { grid-template-columns: 1fr; } .card-large, .card-full { grid-column: auto; } .hero h1 { font-size: 30px; } }
+    @media (max-width: 640px) { .hero-main, .hero-side, .card, .legal-card { padding: 22px; } .hero { padding-top: 34px; } .section-title { font-size: 22px; } .hero h1 { font-size: 26px; } .topbar-inner { align-items: flex-start; } }`;
+
+    const _CSS_PREMIUM = `* { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { --bg: #0f1117; --bg-2: #161922; --panel: rgba(26, 28, 38, 0.90); --panel-2: rgba(212, 149, 107, 0.04); --stroke: rgba(212, 149, 107, 0.10); --text: #c8c2ba; --muted: #8a8580; --white: #faf6f1; --primary: #d4956b; --primary-2: #c4854e; --accent: #e8a87c; --glow: rgba(212, 149, 107, 0.18); --shadow: 0 8px 32px rgba(0,0,0,0.45), 0 2px 6px rgba(212,149,107,0.04); --radius-xl: 20px; --radius-lg: 16px; --radius-md: 12px; --container: 1120px; }
+    @keyframes warmPulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
+    @keyframes subtleDrift { 0%,100% { transform: translate(0,0); } 50% { transform: translate(12px,-8px); } }
+    html { scroll-behavior: smooth; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: var(--text); background: var(--bg); min-height: 100vh; line-height: 1.7; position: relative; overflow-x: hidden; }
+    body::before { content: ""; position: fixed; inset: 0; background: radial-gradient(ellipse 70% 50% at 15% 5%, rgba(212,149,107,0.08), transparent 50%), radial-gradient(ellipse 50% 40% at 85% 90%, rgba(196,133,78,0.06), transparent 50%), radial-gradient(ellipse 60% 60% at 50% 40%, rgba(232,168,124,0.03), transparent 55%); pointer-events: none; z-index: 0; animation: subtleDrift 30s ease-in-out infinite; }
+    body::after { content: ""; position: fixed; top: -50%; left: -50%; width: 200%; height: 200%; background: repeating-conic-gradient(rgba(212,149,107,0.012) 0deg, transparent 1deg, transparent 90deg); pointer-events: none; z-index: 0; }
+    body > * { position: relative; z-index: 1; }
+    a { color: var(--primary); text-decoration: none; transition: color 0.3s ease; }
+    a:hover { color: var(--accent); }
+    .container { width: 100%; max-width: var(--container); margin: 0 auto; padding: 0 22px; }
+    .topbar { position: sticky; top: 0; z-index: 100; background: rgba(15,17,23,0.85); backdrop-filter: blur(24px) saturate(1.3); border-bottom: 1px solid rgba(212,149,107,0.06); }
+    .topbar-inner { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+    .logo-block { display: flex; flex-direction: column; gap: 3px; padding: 14px 0; }
+    .logo-block strong { color: var(--white); font-size: 17px; line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; }
+    .logo-block span { color: var(--muted); font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; }
+    .nav { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: 12px 0; }
+    .nav a { color: var(--muted); font-size: 13px; padding: 8px 14px; border-radius: 10px; font-weight: 500; transition: all 0.3s ease; }
+    .nav a:hover { background: rgba(212,149,107,0.08); color: var(--white); }
+    .hero { position: relative; padding: 60px 0 28px; }
+    .hero-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 22px; align-items: stretch; }
+    .glass-card { background: var(--panel); border: 1px solid var(--stroke); box-shadow: var(--shadow); border-radius: var(--radius-xl); overflow: hidden; backdrop-filter: blur(10px); position: relative; }
+    .glass-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--primary), var(--accent), transparent); opacity: 0.6; }
+    .hero-main { padding: 36px; position: relative; }
+    .hero-main::before { content: ""; position: absolute; inset: 0; background: linear-gradient(145deg, rgba(212,149,107,0.06), transparent 35%), linear-gradient(225deg, rgba(232,168,124,0.03), transparent 50%); pointer-events: none; }
+    .badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border: 1px solid rgba(212,149,107,0.22); background: rgba(212,149,107,0.08); color: var(--accent); border-radius: 999px; font-size: 12px; font-weight: 600; margin-bottom: 20px; letter-spacing: 0.03em; text-transform: uppercase; }
+    .hero h1 { font-size: 40px; line-height: 1.08; color: var(--white); max-width: 820px; margin-bottom: 14px; font-weight: 800; letter-spacing: -0.03em; }
+    .hero p { font-size: 16px; color: var(--muted); max-width: 760px; line-height: 1.7; }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 24px; border-radius: 12px; font-weight: 600; font-size: 14px; border: 1px solid transparent; transition: all 0.3s ease; cursor: pointer; }
+    .btn-primary { background: linear-gradient(135deg, #c4854e, #d4956b); color: #1a1207; box-shadow: 0 4px 18px var(--glow); }
+    .btn-primary:hover { background: linear-gradient(135deg, #b3763f, #c4854e); transform: translateY(-2px); box-shadow: 0 8px 28px rgba(212,149,107,0.25); }
+    .btn-secondary { background: rgba(212,149,107,0.06); border-color: rgba(212,149,107,0.15); color: var(--white); }
+    .btn-secondary:hover { background: rgba(212,149,107,0.12); border-color: rgba(212,149,107,0.25); }
+    .hero-side { padding: 26px; display: grid; gap: 12px; align-content: center; }
+    .mini-stat { border-radius: 14px; border: 1px solid rgba(212,149,107,0.08); background: rgba(212,149,107,0.03); padding: 16px 18px; transition: all 0.3s ease; position: relative; overflow: hidden; }
+    .mini-stat::after { content: ""; position: absolute; top: 0; right: 0; width: 40px; height: 100%; background: linear-gradient(90deg, transparent, rgba(212,149,107,0.05)); pointer-events: none; }
+    .mini-stat:hover { border-color: rgba(212,149,107,0.20); background: rgba(212,149,107,0.06); transform: translateX(3px); }
+    .mini-stat .label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-bottom: 6px; }
+    .mini-stat .value { display: block; color: var(--white); font-size: 17px; font-weight: 700; line-height: 1.4; }
+    section { padding: 28px 0; }
+    .section-head { margin-bottom: 24px; position: relative; padding-left: 16px; }
+    .section-head::before { content: ""; position: absolute; left: 0; top: 4px; width: 3px; height: 28px; background: linear-gradient(180deg, var(--primary), var(--accent)); border-radius: 4px; }
+    .section-title { color: var(--white); font-size: 28px; line-height: 1.15; margin-bottom: 8px; font-weight: 700; letter-spacing: -0.02em; }
+    .section-text { color: var(--muted); max-width: 850px; font-size: 15px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+    .card { background: var(--panel); border: 1px solid var(--stroke); border-radius: var(--radius-lg); box-shadow: var(--shadow); padding: 24px; backdrop-filter: blur(6px); transition: all 0.35s ease; position: relative; overflow: hidden; }
+    .card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(135deg, rgba(212,149,107,0.04), transparent 60%); opacity: 0; transition: opacity 0.35s ease; pointer-events: none; }
+    .card:hover { border-color: rgba(212,149,107,0.20); transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.50), 0 4px 12px rgba(212,149,107,0.06); }
+    .card:hover::after { opacity: 1; }
+    .card h3 { color: var(--white); font-size: 18px; margin-bottom: 12px; font-weight: 700; }
+    .card p { color: var(--muted); font-size: 15px; line-height: 1.7; }
+    .info-list { display: grid; gap: 10px; }
+    .info-item { background: rgba(212,149,107,0.03); border: 1px solid rgba(212,149,107,0.07); border-radius: 12px; padding: 14px 16px; transition: all 0.25s ease; }
+    .info-item:hover { background: rgba(212,149,107,0.06); border-color: rgba(212,149,107,0.14); }
+    .info-item strong { display: block; color: var(--primary); font-size: 11px; font-weight: 600; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .info-item span { display: block; color: var(--text); font-size: 14px; word-break: break-word; }
+    .card-large { grid-column: span 2; }
+    .card-full { grid-column: 1 / -1; }
+    .highlight-box { display: grid; gap: 10px; margin-top: 16px; }
+    .highlight { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; background: rgba(212,149,107,0.05); border: 1px solid rgba(212,149,107,0.10); transition: all 0.25s ease; }
+    .highlight:hover { background: rgba(212,149,107,0.09); border-color: rgba(212,149,107,0.18); }
+    .highlight-dot { width: 8px; height: 8px; border-radius: 999px; background: linear-gradient(135deg, #c4854e, #d4956b); box-shadow: 0 0 0 4px rgba(212,149,107,0.12); margin-top: 7px; flex-shrink: 0; animation: warmPulse 3s ease-in-out infinite; }
+    .highlight div { color: var(--text); font-size: 14px; }
+    .highlight div strong { color: var(--white); }
+    .footer { margin-top: 36px; border-top: 1px solid rgba(212,149,107,0.08); background: rgba(15,17,23,0.70); }
+    .footer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; padding: 34px 0 20px; }
+    .footer-col h4 { color: var(--white); font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+    .footer-col p, .footer-col a { color: var(--muted); font-size: 14px; }
+    .footer-col a { display: block; margin-bottom: 8px; transition: color 0.3s ease; }
+    .footer-col a:hover { color: var(--primary); }
+    .copyright { padding: 0 0 28px; color: #6b6560; font-size: 12px; letter-spacing: 0.02em; }
+    .legal-wrapper { padding: 60px 0; }
+    .legal-card { background: var(--panel); border: 1px solid var(--stroke); border-radius: 20px; box-shadow: var(--shadow); padding: 36px; backdrop-filter: blur(6px); }
+    .legal-card h1 { color: var(--white); font-size: 32px; margin-bottom: 10px; font-weight: 800; letter-spacing: -0.02em; }
+    .legal-card p { color: var(--text); font-size: 15px; margin-bottom: 16px; line-height: 1.7; }
+    .legal-card h2 { color: var(--white); font-size: 18px; font-weight: 700; margin: 24px 0 10px; }
+    .top-space { margin-top: 12px; }
+    @media (max-width: 980px) { .hero-grid, .grid-3, .grid-2, .footer-grid { grid-template-columns: 1fr; } .card-large, .card-full { grid-column: auto; } .hero h1 { font-size: 30px; } .section-head { padding-left: 14px; } }
+    @media (max-width: 640px) { .hero-main, .hero-side, .card, .legal-card { padding: 22px; } .hero { padding-top: 34px; } .section-title { font-size: 22px; } .hero h1 { font-size: 26px; } .topbar-inner { align-items: flex-start; } .section-head::before { height: 22px; } }`;
+
+    const _CSS_CORPORATE = `* { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { --bg: #f7f5f0; --bg-2: #ffffff; --panel: #ffffff; --panel-2: #f0ede7; --stroke: #e2ded6; --text: #3a4055; --muted: #7c8298; --white: #1c2639; --primary: #0d7c66; --primary-2: #0a6553; --accent: #c99a2e; --glow: rgba(13,124,102,0.10); --shadow: 0 2px 16px rgba(28,38,57,0.07); --radius-xl: 16px; --radius-lg: 12px; --radius-md: 8px; --container: 1140px; }
+    html { scroll-behavior: smooth; }
+    body { font-family: "DM Sans", system-ui, -apple-system, sans-serif; color: var(--text); background: var(--bg); min-height: 100vh; line-height: 1.7; }
+    a { color: var(--primary); text-decoration: none; transition: color 0.2s ease; }
+    a:hover { color: var(--primary-2); }
+    .container { width: 100%; max-width: var(--container); margin: 0 auto; padding: 0 22px; }
+    .topbar { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--stroke); }
+    .topbar-inner { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+    .logo-block { display: flex; flex-direction: column; gap: 3px; padding: 14px 0; }
+    .logo-block strong { color: var(--white); font-size: 17px; line-height: 1.25; font-weight: 700; }
+    .logo-block span { color: var(--primary); font-size: 12px; letter-spacing: 0.05em; font-weight: 600; }
+    .nav { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; padding: 12px 0; }
+    .nav a { color: var(--muted); font-size: 13px; padding: 8px 14px; border-radius: 8px; font-weight: 500; transition: all 0.2s ease; }
+    .nav a:hover { background: rgba(13,124,102,0.06); color: var(--primary); }
+    .hero { position: relative; padding: 48px 0 20px; background: linear-gradient(180deg, #efece6 0%, var(--bg) 100%); }
+    .hero-grid { display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 24px; align-items: stretch; }
+    .glass-card { background: var(--panel); border: 1px solid var(--stroke); box-shadow: var(--shadow); border-radius: var(--radius-xl); overflow: hidden; }
+    .hero-main { padding: 36px; }
+    .badge { display: inline-flex; align-items: center; gap: 8px; padding: 7px 16px; border: 1px solid rgba(13,124,102,0.20); background: rgba(13,124,102,0.06); color: var(--primary); border-radius: 999px; font-size: 12px; font-weight: 600; margin-bottom: 18px; letter-spacing: 0.02em; }
+    .hero h1 { font-size: 38px; line-height: 1.1; color: var(--white); max-width: 820px; margin-bottom: 14px; font-weight: 800; letter-spacing: -0.03em; }
+    .hero p { font-size: 15px; color: var(--muted); max-width: 700px; line-height: 1.75; }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 24px; border-radius: 10px; font-weight: 600; font-size: 14px; border: 1px solid transparent; transition: all 0.2s ease; cursor: pointer; }
+    .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 2px 8px var(--glow); }
+    .btn-primary:hover { background: var(--primary-2); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(13,124,102,0.18); }
+    .btn-secondary { background: transparent; border-color: var(--stroke); color: var(--white); }
+    .btn-secondary:hover { background: var(--panel-2); border-color: var(--primary); color: var(--primary); }
+    .hero-side { padding: 24px; display: grid; gap: 10px; align-content: center; }
+    .mini-stat { border-radius: 10px; border: 1px solid var(--stroke); background: var(--panel); padding: 14px 16px; transition: all 0.2s ease; border-left: 3px solid var(--primary); }
+    .mini-stat:hover { border-left-color: var(--accent); box-shadow: 0 4px 12px rgba(28,38,57,0.08); transform: translateX(2px); }
+    .mini-stat .label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 4px; }
+    .mini-stat .value { display: block; color: var(--white); font-size: 15px; font-weight: 700; line-height: 1.4; }
+    section { padding: 32px 0; }
+    .section-head { margin-bottom: 28px; padding-left: 18px; position: relative; }
+    .section-head::before { content: ""; position: absolute; left: 0; top: 2px; width: 4px; height: 32px; background: linear-gradient(180deg, var(--primary), var(--accent)); border-radius: 4px; }
+    .section-title { color: var(--white); font-size: 28px; line-height: 1.15; margin-bottom: 8px; font-weight: 800; letter-spacing: -0.02em; }
+    .section-text { color: var(--muted); max-width: 800px; font-size: 15px; line-height: 1.7; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+    .card { background: var(--panel); border: 1px solid var(--stroke); border-radius: var(--radius-lg); box-shadow: var(--shadow); padding: 24px; transition: all 0.25s ease; border-top: 3px solid transparent; }
+    .card:hover { border-top-color: var(--primary); box-shadow: 0 6px 24px rgba(28,38,57,0.10); transform: translateY(-2px); }
+    .card h3 { color: var(--white); font-size: 17px; margin-bottom: 10px; font-weight: 700; }
+    .card p { color: var(--text); font-size: 14px; line-height: 1.7; }
+    .info-list { display: grid; gap: 8px; }
+    .info-item { background: var(--panel-2); border: 1px solid rgba(226,222,214,0.6); border-radius: 10px; padding: 14px 16px; transition: all 0.2s ease; }
+    .info-item:hover { background: rgba(13,124,102,0.04); border-color: rgba(13,124,102,0.15); }
+    .info-item strong { display: block; color: var(--primary); font-size: 11px; font-weight: 700; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .info-item span { display: block; color: var(--white); font-size: 14px; word-break: break-word; font-weight: 500; }
+    .card-large { grid-column: span 2; }
+    .card-full { grid-column: 1 / -1; }
+    .highlight-box { display: grid; gap: 8px; margin-top: 16px; }
+    .highlight { display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; border-radius: 10px; background: rgba(13,124,102,0.04); border: 1px solid rgba(13,124,102,0.10); transition: all 0.2s ease; }
+    .highlight:hover { background: rgba(13,124,102,0.08); border-color: rgba(13,124,102,0.18); }
+    .highlight-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 0 3px rgba(201,154,46,0.15); margin-top: 7px; flex-shrink: 0; }
+    .highlight div { color: var(--text); font-size: 14px; }
+    .highlight div strong { color: var(--white); }
+    .footer { margin-top: 40px; border-top: none; background: var(--white); color: #c8cad4; }
+    .footer a { color: #a0a4b4; }
+    .footer a:hover { color: #fff; }
+    .footer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; padding: 40px 0 20px; }
+    .footer-col h4 { color: #fff; font-size: 14px; font-weight: 700; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .footer-col p, .footer-col a { color: #a0a4b4; font-size: 14px; }
+    .footer-col a { display: block; margin-bottom: 8px; }
+    .copyright { padding: 0 0 28px; color: #6b7084; font-size: 12px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 20px; margin-top: 8px; }
+    .legal-wrapper { padding: 60px 0; }
+    .legal-card { background: var(--panel); border: 1px solid var(--stroke); border-radius: 16px; box-shadow: var(--shadow); padding: 40px; }
+    .legal-card h1 { color: var(--white); font-size: 32px; margin-bottom: 10px; font-weight: 800; letter-spacing: -0.02em; }
+    .legal-card p { color: var(--text); font-size: 15px; margin-bottom: 16px; line-height: 1.7; }
+    .legal-card h2 { color: var(--white); font-size: 18px; font-weight: 700; margin: 28px 0 10px; }
+    .top-space { margin-top: 12px; }
+    .corp-kpi { padding: 0 0 16px; }
+    .corp-kpi-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; background: var(--panel); border: 1px solid var(--stroke); border-radius: var(--radius-lg); padding: 20px 24px; box-shadow: var(--shadow); }
+    .corp-kpi-item { text-align: center; padding: 8px 4px; border-right: 1px solid var(--stroke); }
+    .corp-kpi-item:last-child { border-right: none; }
+    .corp-kpi-label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 6px; }
+    .corp-kpi-val { display: block; font-size: 15px; color: var(--white); font-weight: 700; }
+    .corp-profile { display: grid; grid-template-columns: 1fr 340px; gap: 28px; align-items: start; }
+    .corp-profile-main { background: var(--panel); border: 1px solid var(--stroke); border-radius: var(--radius-lg); padding: 32px; box-shadow: var(--shadow); }
+    .corp-profile-main h3 { color: var(--white); font-size: 20px; font-weight: 700; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid rgba(13,124,102,0.15); }
+    .corp-profile-main p { color: var(--text); font-size: 15px; line-height: 1.8; margin-bottom: 14px; }
+    .corp-profile-main p:last-child { margin-bottom: 0; }
+    .corp-profile-aside { position: sticky; top: 90px; }
+    .corp-aside-card { background: var(--panel); border: 1px solid var(--stroke); border-radius: var(--radius-lg); padding: 24px; box-shadow: var(--shadow); border-top: 3px solid var(--accent); }
+    .corp-aside-card h4 { color: var(--white); font-size: 15px; font-weight: 700; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.03em; }
+    .corp-aside-card dl { display: grid; gap: 12px; }
+    .corp-aside-card dt { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+    .corp-aside-card dd { font-size: 14px; color: var(--white); font-weight: 600; margin: 2px 0 0; word-break: break-word; }
+    .corp-desc { color: var(--text); font-size: 15px; line-height: 1.8; margin-bottom: 12px; max-width: 900px; }
+    .corp-reg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .corp-reg-card { background: var(--panel); border: 1px solid var(--stroke); border-left: 3px solid var(--primary); border-radius: 0 var(--radius-md) var(--radius-md) 0; padding: 18px 20px; box-shadow: var(--shadow); transition: all 0.2s ease; }
+    .corp-reg-card:hover { border-left-color: var(--accent); box-shadow: 0 4px 16px rgba(28,38,57,0.10); }
+    .corp-reg-card .corp-reg-label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 6px; }
+    .corp-reg-card .corp-reg-value { display: block; font-size: 14px; color: var(--white); font-weight: 600; word-break: break-word; }
+    .corp-activity { background: var(--panel); border: 1px solid var(--stroke); border-radius: var(--radius-lg); padding: 28px; box-shadow: var(--shadow); }
+    .corp-activity h3 { color: var(--white); font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .corp-activity-main { font-size: 15px; color: var(--primary); font-weight: 600; margin-bottom: 8px; padding: 14px 18px; background: rgba(13,124,102,0.05); border: 1px solid rgba(13,124,102,0.12); border-radius: 10px; }
+    .corp-activity-list { list-style: none; padding: 0; margin: 16px 0 0; }
+    .corp-activity-list li { padding: 10px 16px; border-left: 2px solid var(--stroke); margin-bottom: 6px; color: var(--text); font-size: 14px; transition: border-color 0.2s; }
+    .corp-activity-list li:hover { border-left-color: var(--primary); }
+    @media (max-width: 980px) { .hero-grid, .grid-3, .grid-2, .footer-grid, .corp-reg-grid { grid-template-columns: 1fr; } .card-large, .card-full { grid-column: auto; } .hero h1 { font-size: 30px; } .corp-profile { grid-template-columns: 1fr; } .corp-kpi-bar { grid-template-columns: repeat(3, 1fr); } .corp-profile-aside { position: static; } }
+    @media (max-width: 640px) { .hero-main, .hero-side, .card, .legal-card, .corp-profile-main { padding: 22px; } .hero { padding-top: 28px; } .section-title { font-size: 22px; } .hero h1 { font-size: 26px; } .topbar-inner { align-items: flex-start; } .corp-kpi-bar { grid-template-columns: repeat(2, 1fr); } .corp-kpi-item { border-right: none; border-bottom: 1px solid var(--stroke); padding-bottom: 10px; } .corp-kpi-item:last-child { border-bottom: none; } .corp-reg-grid { gap: 10px; } }`;
+
     const _tmplOverride = url.searchParams.get("__template");
-    const _isPro = (_tmplOverride || EMBEDDED_TEMPLATE) === "professional";
+    const _tmplId = _tmplOverride || EMBEDDED_TEMPLATE;
+    const _cssMap = { "classic": _CSS_CLASSIC, "professional": _CSS_PRO, "nextgen": _CSS_NEXTGEN, "premium": _CSS_PREMIUM, "corporate": _CSS_CORPORATE };
+    const _activeCSS = _cssMap[_tmplId] || _CSS_CLASSIC;
 
     function renderPage({ title, description, body, noindex = false }) {
       return new Response(
@@ -472,7 +736,9 @@ export default {
   <meta name="description" content="${escapeHtml(description)}" />
   ${noindex ? '<meta name="robots" content="noindex, nofollow" />' : '<meta name="robots" content="index, follow" />'}
   ${getFacebookDomainVerificationMeta()}
-  <style>${_isPro ? _CSS_PRO : _CSS_CLASSIC}</style>
+  ${_tmplId === "nextgen" ? '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">' : ''}
+  ${_tmplId === "corporate" ? '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">' : ''}
+  <style>${_activeCSS}</style>
 </head>
 <body>
   ${body}
@@ -598,6 +864,166 @@ export default {
         ? `<ul style="margin-top:10px; padding-left: 18px; color: var(--muted);"><li style="margin: 6px 0;">` + empresa.atividadesSecundarias.map((a) => `${escapeHtml(a)}`).join("</li><li style='margin: 6px 0;'>") + `</li></ul>`
         : `<p style="color: var(--muted); font-size: 15px;">Não informado</p>`;
 
+    const corpAtividadesHtml = empresa.atividadesSecundarias && empresa.atividadesSecundarias.length
+        ? `<ul class="corp-activity-list">` + empresa.atividadesSecundarias.map((a) => `<li>${escapeHtml(a)}</li>`).join("") + `</ul>`
+        : `<p style="color: var(--muted); font-size: 14px; margin-top: 10px;">Nenhuma atividade secundária registrada.</p>`;
+
+    function corporateHome() {
+      const ni = "Não informado";
+      const mf = empresa.matrizFilial || "Matriz";
+      const ds = empresa.dataSituacao || ni;
+      const ms = empresa.motivoSituacao || ni;
+      const ef = empresa.efr || ni;
+      const se = empresa.situacaoEspecial || ni;
+      const dse = empresa.dataSituacaoEspecial || ni;
+      return `
+      ${header()}
+      <main>
+        <section class="hero">
+          <div class="container">
+            <div class="hero-grid">
+              <div class="glass-card hero-main">
+                <div class="badge">Situação: ${escapeHtml(empresa.situacao)} · ${escapeHtml(mf)} · ${escapeHtml(empresa.endereco.cidade)} / ${escapeHtml(empresa.endereco.uf)}</div>
+                <h1>${escapeHtml(empresa.razaoSocial)}</h1>
+                <p>Empresa constituída em ${escapeHtml(empresa.abertura)}, inscrita sob o CNPJ ${escapeHtml(empresa.cnpj)}, com sede em ${escapeHtml(empresa.endereco.cidade)}/${escapeHtml(empresa.endereco.uf)}. Atuante no segmento de ${escapeHtml(empresa.cnaePrincipal)}, a empresa mantém registro regular junto à Receita Federal do Brasil, operando sob a natureza jurídica de ${escapeHtml(empresa.naturezaJuridica)} com capital social de ${escapeHtml(empresa.capitalSocial)}.</p>
+                <div class="hero-actions">
+                  <a href="#dados" class="btn btn-primary">Registro Federal completo</a>
+                  <a href="#atividades" class="btn btn-secondary">Atividade econômica</a>
+                  <a href="#contato" class="btn btn-secondary">Contato</a>
+                </div>
+              </div>
+              <div class="glass-card hero-side">
+                <div class="mini-stat"><span class="label">CNPJ</span><span class="value">${escapeHtml(empresa.cnpj)}</span></div>
+                <div class="mini-stat"><span class="label">Situação Cadastral</span><span class="value">${escapeHtml(empresa.situacao)}${ds !== ni ? ` desde ${escapeHtml(ds)}` : ""}</span></div>
+                <div class="mini-stat"><span class="label">Tipo de Estabelecimento</span><span class="value">${escapeHtml(mf)}</span></div>
+                <div class="mini-stat"><span class="label">Data de Abertura</span><span class="value">${escapeHtml(empresa.abertura)}</span></div>
+                <div class="mini-stat"><span class="label">Capital Social</span><span class="value">${escapeHtml(empresa.capitalSocial)}</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="corp-kpi">
+          <div class="container">
+            <div class="corp-kpi-bar">
+              <div class="corp-kpi-item"><span class="corp-kpi-label">Natureza Jurídica</span><span class="corp-kpi-val">${escapeHtml(empresa.naturezaJuridica)}</span></div>
+              <div class="corp-kpi-item"><span class="corp-kpi-label">Porte</span><span class="corp-kpi-val">${escapeHtml(empresa.porte)}</span></div>
+              <div class="corp-kpi-item"><span class="corp-kpi-label">Optante MEI</span><span class="corp-kpi-val">${escapeHtml(empresa.mei)}</span></div>
+              <div class="corp-kpi-item"><span class="corp-kpi-label">Abertura</span><span class="corp-kpi-val">${escapeHtml(empresa.abertura)}</span></div>
+              <div class="corp-kpi-item"><span class="corp-kpi-label">UF</span><span class="corp-kpi-val">${escapeHtml(empresa.endereco.uf)}</span></div>
+            </div>
+          </div>
+        </section>
+        <section id="quem-somos">
+          <div class="container">
+            <div class="section-head"><h2 class="section-title">Perfil Empresarial</h2><p class="section-text">Informações detalhadas sobre a constituição, atuação e estrutura organizacional da empresa, disponibilizadas para consulta pública e verificação cadastral.</p></div>
+            <div class="corp-profile">
+              <div class="corp-profile-main">
+                <h3>Sobre a Empresa</h3>
+                <p><strong>${escapeHtml(empresa.razaoSocial)}</strong>${empresa.nomeFantasia !== ni ? `, operando sob o nome fantasia <strong>${escapeHtml(empresa.nomeFantasia)}</strong>,` : ""} é uma empresa de natureza jurídica <strong>${escapeHtml(empresa.naturezaJuridica)}</strong>, enquadrada como <strong>${escapeHtml(empresa.porte)}</strong>, com registro datado de <strong>${escapeHtml(empresa.abertura)}</strong> junto à Receita Federal do Brasil.</p>
+                <p>A empresa encontra-se com situação cadastral <strong>${escapeHtml(empresa.situacao)}</strong>${ds !== ni ? ` desde ${escapeHtml(ds)}` : ""}, mantendo conformidade com os requisitos legais e regulatórios necessários para operação regular no mercado brasileiro.</p>
+                <p>Sua atividade econômica principal é classificada pelo CNAE como <strong>${escapeHtml(empresa.cnaePrincipal)}</strong>, refletindo sua atuação no respectivo segmento. O capital social registrado é de <strong>${escapeHtml(empresa.capitalSocial)}</strong>, ${empresa.mei === "Sim" ? "sendo a empresa optante pelo regime de <strong>Microempreendedor Individual (MEI)</strong>" : "não sendo optante pelo regime de Microempreendedor Individual"}.</p>
+                <p>Com sede estabelecida em <strong>${escapeHtml(empresa.endereco.cidade)} - ${escapeHtml(empresa.endereco.uf)}</strong>, no endereço ${escapeHtml(empresa.endereco.logradouro)}, ${escapeHtml(empresa.endereco.numero)}${empresa.endereco.complemento ? `, ${escapeHtml(empresa.endereco.complemento)}` : ""}, ${escapeHtml(empresa.endereco.bairro)}, CEP ${escapeHtml(empresa.endereco.cep)}, a empresa está posicionada para atender clientes e parceiros de forma acessível e profissional.</p>
+              </div>
+              <div class="corp-profile-aside">
+                <div class="corp-aside-card">
+                  <h4>Ficha Resumida</h4>
+                  <dl>
+                    <dt>Razão Social</dt><dd>${escapeHtml(empresa.razaoSocial)}</dd>
+                    <dt>Nome Fantasia</dt><dd>${escapeHtml(empresa.nomeFantasia)}</dd>
+                    <dt>CNPJ</dt><dd>${escapeHtml(empresa.cnpj)}</dd>
+                    <dt>Tipo</dt><dd>${escapeHtml(mf)}</dd>
+                    <dt>Porte</dt><dd>${escapeHtml(empresa.porte)}</dd>
+                    <dt>MEI</dt><dd>${escapeHtml(empresa.mei)}</dd>
+                    <dt>Capital Social</dt><dd>${escapeHtml(empresa.capitalSocial)}</dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="dados">
+          <div class="container">
+            <div class="section-head"><h2 class="section-title">Registro Federal Completo</h2><p class="section-text">Dados oficiais extraídos do Cadastro Nacional da Pessoa Jurídica (CNPJ) junto à Receita Federal, incluindo informações cadastrais, situação, enquadramento e endereço fiscal.</p></div>
+            <div class="corp-reg-grid">
+              <div class="corp-reg-card"><span class="corp-reg-label">Razão Social</span><span class="corp-reg-value">${escapeHtml(empresa.razaoSocial)}</span></div>
+              <div class="corp-reg-card"><span class="corp-reg-label">Nome Fantasia</span><span class="corp-reg-value">${escapeHtml(empresa.nomeFantasia)}</span></div>
+              <div class="corp-reg-card"><span class="corp-reg-label">CNPJ</span><span class="corp-reg-value">${escapeHtml(empresa.cnpj)}</span></div>
+              <div class="corp-reg-card"><span class="corp-reg-label">Tipo de Estabelecimento</span><span class="corp-reg-value">${escapeHtml(mf)}</span></div>
+              <div class="corp-reg-card"><span class="corp-reg-label">Situação Cadastral</span><span class="corp-reg-value">${escapeHtml(empresa.situacao)}</span></div>
+              <div class="corp-reg-card"><span class="corp-reg-label">Data da Situação</span><span class="corp-reg-value">${escapeHtml(ds)}</span></div>
+              <div class="corp-reg-card"><span class="corp-reg-label">Motivo da Situação</span><span class="corp-reg-value">${escapeHtml(ms)}</span></div>
+              <div class="corp-reg-card"><span class="corp-reg-label">Data de Abertura</span><span class="corp-reg-value">${escapeHtml(empresa.abertura)}</span></div>
+              <div class="corp-reg-card"><span class="corp-reg-label">Natureza Jurídica</span><span class="corp-reg-value">${escapeHtml(empresa.naturezaJuridica)}</span></div>
+              <div class="corp-reg-card"><span class="corp-reg-label">Porte</span><span class="corp-reg-value">${escapeHtml(empresa.porte)}</span></div>
+              <div class="corp-reg-card"><span class="corp-reg-label">Capital Social</span><span class="corp-reg-value">${escapeHtml(empresa.capitalSocial)}</span></div>
+              <div class="corp-reg-card"><span class="corp-reg-label">Optante MEI</span><span class="corp-reg-value">${escapeHtml(empresa.mei)}</span></div>
+              <div class="corp-reg-card"><span class="corp-reg-label">Ente Federativo Resp.</span><span class="corp-reg-value">${escapeHtml(ef)}</span></div>
+              <div class="corp-reg-card"><span class="corp-reg-label">Situação Especial</span><span class="corp-reg-value">${escapeHtml(se)}</span></div>
+              <div class="corp-reg-card"><span class="corp-reg-label">Data Situação Especial</span><span class="corp-reg-value">${escapeHtml(dse)}</span></div>
+            </div>
+          </div>
+        </section>
+        <section id="atividades">
+          <div class="container">
+            <div class="section-head"><h2 class="section-title">Atividade Econômica</h2><p class="section-text">Classificação Nacional de Atividades Econômicas (CNAE) vinculada ao registro da empresa, representando o segmento de atuação junto aos órgãos competentes.</p></div>
+            <div class="corp-activity">
+              <h3>Atividade Principal</h3>
+              <div class="corp-activity-main">${escapeHtml(empresa.cnaePrincipal)}</div>
+              <p class="corp-desc">A atividade principal registrada define o segmento econômico preponderante da empresa e é utilizada como referência para obrigações tributárias, enquadramento fiscal e regulação setorial aplicável.</p>
+              <h3 style="margin-top: 24px;">Atividades Secundárias</h3>
+              ${corpAtividadesHtml}
+              <p class="corp-desc" style="margin-top: 12px;">As atividades secundárias representam segmentos complementares em que a empresa pode atuar, ampliando o escopo de serviços e operações permitidos pelo registro.</p>
+            </div>
+          </div>
+        </section>
+        <section id="localizacao">
+          <div class="container">
+            <div class="section-head"><h2 class="section-title">Localização</h2><p class="section-text">Endereço fiscal registrado junto à Receita Federal do Brasil para correspondência e identificação da sede.</p></div>
+            <div class="grid-2">
+              <div class="card card-large">
+                <h3>Endereço Completo</h3>
+                <div class="info-list">
+                  <div class="info-item"><strong>Logradouro</strong><span>${escapeHtml(empresa.endereco.logradouro)}</span></div>
+                  <div class="info-item"><strong>Número</strong><span>${escapeHtml(empresa.endereco.numero)}</span></div>
+                  <div class="info-item"><strong>Complemento</strong><span>${escapeHtml(empresa.endereco.complemento || "—")}</span></div>
+                  <div class="info-item"><strong>Bairro</strong><span>${escapeHtml(empresa.endereco.bairro)}</span></div>
+                  <div class="info-item"><strong>Cidade / UF</strong><span>${escapeHtml(empresa.endereco.cidade)} / ${escapeHtml(empresa.endereco.uf)}</span></div>
+                  <div class="info-item"><strong>CEP</strong><span>${escapeHtml(empresa.endereco.cep)}</span></div>
+                </div>
+                <div class="hero-actions" style="margin-top: 18px;">
+                  <a class="btn btn-primary" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Ver no Google Maps</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="contato">
+          <div class="container">
+            <div class="section-head"><h2 class="section-title">Contato</h2><p class="section-text">Canais oficiais de comunicação disponibilizados pela empresa para atendimento, suporte e informações comerciais.</p></div>
+            <div class="grid-3">
+              <div class="card">
+                <h3>Telefone</h3>
+                <p>${toTelHref(empresa.contato.telefone) ? `<a href="${escapeHtml(toTelHref(empresa.contato.telefone))}">${escapeHtml(formatTelefoneBr(empresa.contato.telefone))}</a>` : `${escapeHtml(formatTelefoneBr(empresa.contato.telefone))}`}</p>
+                <p style="color: var(--muted); font-size: 13px; margin-top: 8px;">Horário comercial, de segunda a sexta-feira.</p>
+              </div>
+              <div class="card">
+                <h3>E-mail</h3>
+                <p><a href="mailto:${escapeHtml(empresa.contato.email)}">${escapeHtml(empresa.contato.email)}</a></p>
+                <p style="color: var(--muted); font-size: 13px; margin-top: 8px;">Para dúvidas, solicitações ou informações gerais.</p>
+              </div>
+              <div class="card">
+                <h3>Endereço</h3>
+                <p>${escapeHtml(enderecoCompleto)}</p>
+                <div class="hero-actions" style="margin-top: 14px;"><a class="btn btn-primary" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Abrir no Maps</a></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+      ${footer()}
+    `;
+    }
+
     const homeBody = `
       ${header()}
       <main>
@@ -607,7 +1033,7 @@ export default {
               <div class="glass-card hero-main">
                 <div class="badge">Empresa ativa • MEI • ${escapeHtml(empresa.endereco.cidade)} / ${escapeHtml(empresa.endereco.uf)}</div>
                 <h1>${escapeHtml(empresa.razaoSocial)}</h1>
-                <p>${_isPro
+                <p>${_tmplId !== "classic"
                   ? `Empresa regularmente constituída e registrada junto à Receita Federal do Brasil, dedicada a oferecer soluções e serviços com transparência, responsabilidade e compromisso com a excelência no atendimento aos nossos clientes e parceiros comerciais.`
                   : `Página institucional desenvolvida para apresentar informações cadastrais, meios de contato e estrutura básica da empresa com visual dark moderno, navegação elegante e layout profissional.`}</p>
                 <div class="hero-actions">
@@ -631,7 +1057,7 @@ export default {
         </section>
         <section id="quem-somos">
           <div class="container">
-            <div class="section-head"><h2 class="section-title">Quem Somos</h2><p class="section-text">${_isPro
+            <div class="section-head"><h2 class="section-title">Quem Somos</h2><p class="section-text">${_tmplId !== "classic"
               ? `Somos uma empresa comprometida com a qualidade e a integridade em todas as nossas operações. Atuamos de forma ética e transparente, buscando sempre a satisfação dos nossos clientes e o desenvolvimento sustentável dos nossos negócios.`
               : `Informações gerais e cadastrais exibidas de forma clara, com foco institucional e navegação simples.`}</p></div>
             <div class="grid-3">
@@ -643,7 +1069,7 @@ export default {
         </section>
         <section id="dados">
           <div class="container">
-            <div class="section-head"><h2 class="section-title">Dados Cadastrais</h2><p class="section-text">${_isPro
+            <div class="section-head"><h2 class="section-title">Dados Cadastrais</h2><p class="section-text">${_tmplId !== "classic"
               ? `Informações oficiais registradas junto aos órgãos competentes, disponibilizadas para consulta pública e verificação de conformidade empresarial.`
               : `Informações institucionais para referência, contato e validação cadastral.`}</p></div>
             <div class="grid-2">
@@ -689,7 +1115,7 @@ export default {
         </section>
         <section id="contato">
           <div class="container">
-            <div class="section-head"><h2 class="section-title">Contato</h2><p class="section-text">${_isPro
+            <div class="section-head"><h2 class="section-title">Contato</h2><p class="section-text">${_tmplId !== "classic"
               ? `Entre em contato conosco através dos canais oficiais abaixo. Nossa equipe está à disposição para atendê-lo.`
               : `Utilize os canais abaixo para contato direto.`}</p></div>
             <div class="grid-3">
@@ -704,7 +1130,8 @@ export default {
     `;
 
     if (path === "/") {
-      return renderPage({ title: `${empresa.razaoSocial} | CNPJ ${empresa.cnpj}`, description: `Página institucional da empresa ${empresa.razaoSocial} (CNPJ ${empresa.cnpj}).`, body: homeBody });
+      const _body = _tmplId === "corporate" ? corporateHome() : homeBody;
+      return renderPage({ title: `${empresa.razaoSocial} | CNPJ ${empresa.cnpj}`, description: `Página institucional da empresa ${empresa.razaoSocial} (CNPJ ${empresa.cnpj}).`, body: _body });
     }
 
     return renderPage({
@@ -773,6 +1200,12 @@ def empresa_json_from_cnpjdata(data: Any) -> Optional[str]:
         "porte": _g("porte") or ni,
         "mei": _g("mei") or ni,
         "capitalSocial": _g("capital_social") or ni,
+        "matrizFilial": _g("matriz_filial") or "Matriz",
+        "dataSituacao": _g("data_situacao") or ni,
+        "motivoSituacao": _g("motivo_situacao") or ni,
+        "efr": _g("efr") or ni,
+        "situacaoEspecial": _g("situacao_especial") or ni,
+        "dataSituacaoEspecial": _g("data_situacao_especial") or ni,
         "cnaePrincipal": _g("cnae_principal") or ni,
         "atividadesSecundarias": atividades,
         "endereco": {
@@ -915,11 +1348,13 @@ def to_edge_function(worker_js: str) -> str:
 
 
 def render_edge_function(
-    *, cnpj_digits: str, token_hash: str, empresa_json: Optional[str] = None
+    *, cnpj_digits: str, token_hash: str, empresa_json: Optional[str] = None,
+    template_id: Optional[str] = None,
 ) -> str:
     """Muta o template com (cnpj, token[, empresa]) e devolve a Edge Function."""
     return to_edge_function(render_worker_js(
         cnpj_digits=cnpj_digits, token_hash=token_hash, empresa_json=empresa_json,
+        template_id=template_id,
     ))
 
 

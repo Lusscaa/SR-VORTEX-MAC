@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Database, Users, Wifi, Rocket, RefreshCw, Gauge, Building2, LogIn, Settings2,
-  Search, ListPlus, Copy, Smartphone,
+  Search, ListPlus, Copy, Smartphone, Wallet, Target,
 } from 'lucide-react'
 import { api } from '../api.js'
 import { Card, Stat, btnPrimary, btnGhost, inputCls } from '../components/ui.jsx'
@@ -372,6 +372,7 @@ export default function Batch() {
   const [dualBm, setDualBm] = useState(false)
   const [browserProvider, setBrowserProvider] = useState('adspower')
   const [wabaEnabled, setWabaEnabled] = useState(false)
+  const [smsBal, setSmsBal] = useState({})
   const smsOption = smsProvider === 'nv' ? smsSubOption : smsProvider === 'sms24h' ? 'sms24h' : 'smsrush'
   const fallbackProviders = [
     { id: 'nv', label: 'Numero-Virtual', option: 'facebook' },
@@ -391,6 +392,8 @@ export default function Batch() {
   const [confirmingLogin, setConfirmingLogin] = useState(false)
   const [loginBusy, setLoginBusy] = useState(false)
   const [loginFeedback, setLoginFeedback] = useState(null)
+  const [confirmingAdAccount, setConfirmingAdAccount] = useState(false)
+  const [adAccountFeedback, setAdAccountFeedback] = useState(null)
   const [selCnpj, setSelCnpj] = useState(null)
   const [cnpjMeta, setCnpjMeta] = useState({}) // cnpj -> {loading|data|err}
 
@@ -433,6 +436,19 @@ export default function Batch() {
     }
   }
 
+  const refreshSmsBal = () => {
+    Promise.allSettled([
+      api.smsBalance('numero_virtual'),
+      api.smsBalance('sms24h_org'),
+    ]).then(([nv, s24]) => {
+      setSmsBal((p) => ({
+        ...p,
+        nv: nv.status === 'fulfilled' ? nv.value : p?.nv,
+        sms24h: s24.status === 'fulfilled' ? s24.value : p?.sms24h,
+      }))
+    })
+  }
+
   const refreshAutopilot = () => api.stats().then((s) => {
     if (s.autopilot) {
       setAutoOn(!!s.autopilot.enabled)
@@ -442,7 +458,7 @@ export default function Batch() {
     }
   }).catch(() => {})
   const refresh = () => { api.pools().then(setPools).catch(() => {}); refreshAutopilot() }
-  useEffect(() => { refresh() }, [])
+  useEffect(() => { refresh(); refreshSmsBal() }, [])
   useEffect(() => {
     if (!autoOn) return
     const t = setInterval(refreshAutopilot, 5000)
@@ -494,6 +510,15 @@ export default function Batch() {
       setFeedback({ ok: true, text: `${res.enqueued} run(s) iniciada(s). Acompanhe em Runs & Logs.` })
       refresh()
     } catch (e) { setFeedback({ ok: false, text: e.message }) }
+  }
+
+  const enqueueAdAccount = async () => {
+    setAdAccountFeedback(null); setConfirmingAdAccount(false)
+    try {
+      const res = await api.enqueue(Number(count), connMode === 'proxy', proxyType, smsOption, smsDdd || null, smsProvider === 'smsrush' ? smsRushServer : null, smsFallbackOption, dualBm, browserProvider, wabaEnabled, true)
+      setAdAccountFeedback({ ok: true, text: `${res.enqueued} run(s) iniciada(s) (até conta de anúncios). Acompanhe em Runs & Logs.` })
+      refresh()
+    } catch (e) { setAdAccountFeedback({ ok: false, text: e.message }) }
   }
 
   // Só logar (embaixo de "Enfileirar e rodar"): abre a conta, loga e para em
@@ -715,8 +740,8 @@ export default function Batch() {
               <div className="relative inline-flex rounded-full bg-neutral-200 dark:bg-neutral-800 p-0.5">
                 <span className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-full transition-all duration-200 ${
                   browserProvider === 'ixbrowser'
-                    ? 'left-[calc(50%+2px)] bg-gradient-to-r from-violet-500 to-indigo-500 shadow-[0_0_10px_rgba(139,92,246,0.4)]'
-                    : 'left-0.5 bg-gradient-to-r from-blue-500 to-cyan-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]'
+                    ? 'left-[calc(50%+2px)] bg-gradient-to-r from-amber-500 to-orange-500 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
+                    : 'left-0.5 bg-gradient-to-r from-emerald-500 to-green-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]'
                 }`} />
                 <button type="button" onClick={() => setBrowserProvider('adspower')}
                   className={`relative z-10 px-3 py-1 text-[11px] font-bold tracking-wide rounded-full transition-colors ${
@@ -781,8 +806,38 @@ export default function Batch() {
               </div>
             </div>
 
-            {/* SMS — provedor (aba) + opção + DDD/servidor */}
+            {/* SMS — saldo + provedor (aba) + opção + DDD/servidor */}
             <div>
+              {/* ── Saldo SMS ── */}
+              <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50/60 dark:bg-neutral-900/40 p-2.5 mb-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
+                    <Wallet size={11} /> Saldo SMS
+                  </span>
+                  <button type="button" onClick={refreshSmsBal}
+                    className="text-[10px] text-neutral-400 hover:text-lime-500 dark:hover:text-lime-400 transition-colors">↻ atualizar</button>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { key: 'nv', label: 'NV', bal: smsBal.nv },
+                    { key: 'sms24h', label: '24H', bal: smsBal.sms24h },
+                    { key: 'smsrush', label: 'Rush', bal: null },
+                  ].map((p) => (
+                    <div key={p.key} className="flex flex-col items-center rounded-md bg-white/70 dark:bg-neutral-800/60 px-1.5 py-1 border border-neutral-100 dark:border-neutral-700/50">
+                      <span className="text-[8px] text-neutral-400 dark:text-neutral-500">{p.label}</span>
+                      <span className={`text-xs font-bold tabular-nums ${
+                        p.bal?.balance > 2 ? 'text-emerald-600 dark:text-emerald-400'
+                        : p.bal?.balance > 0 ? 'text-amber-600 dark:text-amber-400'
+                        : p.bal?.balance != null ? 'text-red-500 dark:text-red-400'
+                        : 'text-neutral-300 dark:text-neutral-600'
+                      }`}>
+                        {p.bal?.balance != null ? `R$${p.bal.balance.toFixed(2)}` : '—'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <span className="block text-neutral-500 dark:text-neutral-400 text-xs mb-1.5 flex items-center gap-1.5">
                 <Smartphone size={13} /> Número SMS — escolha a fonte
               </span>
@@ -823,27 +878,34 @@ export default function Batch() {
                       onChange={(e) => setSmsDdd(e.target.value.replace(/\D/g, ''))}
                       placeholder="vazio = aleatório" className={`${inputCls} w-32 ml-auto text-xs`} />
                   </label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <button type="button" onClick={() => setSmsSubOption('facebook')}
                       className={`rounded-lg border-2 px-3 py-2 text-left transition ${smsSubOption === 'facebook'
                         ? 'border-emerald-400 bg-emerald-500/15 shadow-[0_0_12px_-4px_rgba(52,211,153,0.5)]'
                         : 'border-neutral-300 dark:border-neutral-700 hover:border-emerald-400/40 opacity-70'}`}>
                       <span className="block font-bold text-sm">Facebook</span>
-                      <span className="block text-[10px] text-neutral-500 dark:text-neutral-400">Op.1 · Vivo · R$1,30</span>
+                      <span className="block text-[10px] text-neutral-500 dark:text-neutral-400">Vivo · R$1,30</span>
+                    </button>
+                    <button type="button" onClick={() => setSmsSubOption('other_1')}
+                      className={`rounded-lg border-2 px-3 py-2 text-left transition ${smsSubOption === 'other_1'
+                        ? 'border-sky-400 bg-sky-400/15 shadow-[0_0_12px_-4px_rgba(56,189,248,0.5)]'
+                        : 'border-neutral-300 dark:border-neutral-700 hover:border-sky-400/40 opacity-70'}`}>
+                      <span className="block font-bold text-sm">Outros Op.1</span>
+                      <span className="block text-[10px] text-neutral-500 dark:text-neutral-400">aleat. · R$2,00</span>
                     </button>
                     <button type="button" onClick={() => setSmsSubOption('other_2')}
                       className={`rounded-lg border-2 px-3 py-2 text-left transition ${smsSubOption === 'other_2'
                         ? 'border-amber-400 bg-amber-400/15 shadow-[0_0_12px_-4px_rgba(251,191,36,0.5)]'
                         : 'border-neutral-300 dark:border-neutral-700 hover:border-amber-400/40 opacity-70'}`}>
-                      <span className="block font-bold text-sm">Outros</span>
-                      <span className="block text-[10px] text-neutral-500 dark:text-neutral-400">Op.2 · aleat. · R$1,80</span>
+                      <span className="block font-bold text-sm">Outros Op.2</span>
+                      <span className="block text-[10px] text-neutral-500 dark:text-neutral-400">aleat. · R$1,80</span>
                     </button>
-                    <button type="button" onClick={() => setSmsSubOption('other')}
-                      className={`rounded-lg border-2 px-3 py-2 text-left transition ${smsSubOption === 'other'
-                        ? 'border-purple-400 bg-purple-400/15 shadow-[0_0_12px_-4px_rgba(192,132,252,0.5)]'
-                        : 'border-neutral-300 dark:border-neutral-700 hover:border-purple-400/40 opacity-70'}`}>
-                      <span className="block font-bold text-sm">Outros</span>
-                      <span className="block text-[10px] text-neutral-500 dark:text-neutral-400">Op.3 · aleat. · R$2,76</span>
+                    <button type="button" onClick={() => setSmsSubOption('other_3')}
+                      className={`rounded-lg border-2 px-3 py-2 text-left transition ${smsSubOption === 'other_3'
+                        ? 'border-rose-400 bg-rose-400/15 shadow-[0_0_12px_-4px_rgba(251,113,133,0.5)]'
+                        : 'border-neutral-300 dark:border-neutral-700 hover:border-rose-400/40 opacity-70'}`}>
+                      <span className="block font-bold text-sm">Outros Op.3</span>
+                      <span className="block text-[10px] text-neutral-500 dark:text-neutral-400">aleat. · R$2,70</span>
                     </button>
                   </div>
                 </>)}
@@ -855,7 +917,7 @@ export default function Batch() {
                       onChange={(e) => setSmsDdd(e.target.value.replace(/\D/g, ''))}
                       placeholder="vazio = aleatório" className={`${inputCls} w-32 ml-auto text-xs`} />
                   </label>
-                  <div className="rounded-lg border-2 border-violet-400 bg-violet-400/10 px-3 py-2">
+                  <div className="rounded-lg border-2 border-amber-400 bg-amber-400/10 px-3 py-2">
                     <span className="block font-bold text-sm">Facebook</span>
                     <span className="block text-[10px] text-neutral-500 dark:text-neutral-400">sms24h.org · R$0,80</span>
                   </div>
@@ -907,11 +969,13 @@ export default function Batch() {
                 </p>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">
                   Número SMS: <b>{
-                    smsOption === 'facebook' ? 'Numero-Virtual · Facebook (Op.1 · R$1,30)' :
+                    smsOption === 'facebook' ? 'Numero-Virtual · Facebook (R$1,30)' :
+                    smsOption === 'other_1' ? 'Numero-Virtual · Outros (Op.1 · R$2,00)' :
                     smsOption === 'other_2' ? 'Numero-Virtual · Outros (Op.2 · R$1,80)' :
+                    smsOption === 'other_3' ? 'Numero-Virtual · Outros (Op.3 · R$2,70)' :
                     smsOption === 'sms24h' ? 'SMS24H · Facebook (R$0,80)' :
                     smsOption === 'smsrush' ? `SMSRush · Facebook · Servidor ${smsRushServer}` :
-                    'Numero-Virtual · Outros (Op.3 · R$2,76)'
+                    'Numero-Virtual · Facebook (R$1,30)'
                   }</b>
                   {smsDdd && <> · DDD <b>{smsDdd}</b></>}
                   {smsFallbackOption && <> · 2ª: <b>{fallbackProviders.find((p) => p.id === smsFallbackProvider)?.label}</b></>}
@@ -932,6 +996,30 @@ export default function Batch() {
                 <Rocket size={17} /> Enfileirar e rodar
               </button>
             )}
+
+            {confirmingAdAccount ? (
+              <div className="rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-3">
+                <p className="text-sm font-medium mb-2">
+                  Disparar <b>{Math.min(Number(count) || 0, maxPairs)}</b> run(s) até a <b>Conta de Anúncios</b>?
+                </p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+                  Roda todo o fluxo (portfólio, domínio, dados, conta de anúncios) e para. Sem verificação da empresa, sem WABA. A run é marcada como 100% concluída nesse modo.
+                </p>
+                <div className="flex gap-2">
+                  <button onClick={enqueueAdAccount} className="rounded-lg bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 text-sm flex-1">Confirmar</button>
+                  <button onClick={() => setConfirmingAdAccount(false)} className={`${btnGhost} px-4 py-2 text-sm`}>Cancelar</button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button" onClick={() => setConfirmingAdAccount(true)} disabled={!maxPairs}
+                title="Roda todo o fluxo até criar a conta de anúncios e para — sem verificação da empresa."
+                className="rounded-lg border border-amber-400 dark:border-amber-700 text-amber-700 dark:text-amber-400 px-5 py-2.5 text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Target size={15} /> Até Conta de Anúncios
+              </button>
+            )}
+            {adAccountFeedback && <p className={`text-sm ${adAccountFeedback.ok ? 'text-amber-700 dark:text-amber-400 font-medium' : 'text-red-500'}`}>{adAccountFeedback.text}</p>}
 
             {confirmingLogin ? (
               <div className="rounded-lg border border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 p-3">

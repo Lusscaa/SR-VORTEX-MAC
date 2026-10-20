@@ -87,23 +87,28 @@ def _run_is_complete(result: Any) -> bool:
     recebido. Qualquer parada antes disso (conta descartada, SMS timeout…)
     é INCOMPLETE.
 
-    2026-09: o passo 4 deixou de ser a WABA e passou a ser a conta de
-    anúncios (ver CRIAR_WABA em config.py) — o critério exige
-    ``ad_account_id`` no lugar de ``waba_id``/``meta_token``. Sem o fluxo do
-    WhatsApp nenhum token de sessão trafega, então exigi-lo marcaria 100% das
-    runs como incompletas e devolveria conta/CNPJ/proxy ao pool por engano.
+    Modalidade ``stopped_at_ad_account``: 100% = portfólio + detalhes +
+    domínio + conta de anúncios. Verificação e SMS NÃO são exigidos.
 
     A completude é ditada pelas flags do resultado — NÃO pelo current_step
     (que o `step()` reverte p/ "boot" no fim de toda run; ver nota acima).
     """
     if getattr(result, "current_step", None) in _INCOMPLETE_STEPS:
         return False
+    if getattr(result, "stopped_at_ad_account", False):
+        return all((
+            getattr(result, "business_id", None),
+            getattr(result, "business_details_saved", False),
+            getattr(result, "domain_verified", False),
+            (
+                getattr(result, "ad_account_id", None)
+                or getattr(result, "ad_account_created", False)
+            ),
+        ))
     return all((
         getattr(result, "business_id", None),
         getattr(result, "business_details_saved", False),
         getattr(result, "domain_verified", False),
-        # Conta de anúncios criada — o id act_… é telemetria (o sniffer da
-        # Meta perde com frequência) e não pode reprovar uma run completa.
         (
             getattr(result, "ad_account_id", None)
             or getattr(result, "ad_account_created", False)
@@ -324,6 +329,8 @@ class JobManager:
             # Graph API? Persiste p/ a auditoria saber se a captura é UTILIZÁVEL,
             # não só presente (antes só ia pro log, que rotaciona).
             verify_token_ok=int(bool(getattr(result, "verify_token_ok", False))),
+            bm_invite_sent=int(bool(getattr(result, "bm_invite_sent", False))),
+            bm_invite_email=getattr(result, "bm_invite_email", None),
             step=final_step,
         )
         if biz:

@@ -171,6 +171,7 @@ NUMERO_VIRTUAL_API_KEY = (
     os.getenv("NUMERO_VIRTUAL_API_KEY")
     or os.getenv("SMS24H_API_KEY", "")
 )
+TIGRMAIL_API_TOKEN = os.getenv("TIGRMAIL_API_TOKEN", "")
 NUMERO_VIRTUAL_BASE_URL = os.getenv(
     "NUMERO_VIRTUAL_BASE_URL",
     os.getenv("SMS24H_BASE_URL", "https://app.numero-virtual.com/api/v1"),
@@ -220,8 +221,10 @@ SMSRUSH_SERVICE_ID = int(os.getenv("SMSRUSH_SERVICE_ID", "42"))
 # (botões na aba Disparar). Às vezes chega SMS de uma opção e não da outra —
 # por isso o operador escolhe a fonte ANTES da run:
 #   * 'facebook' → serviço Facebook / Vivo, Opção 1 (~R$1,30).
+#   * 'other_1'  → 'Outros apps/Site', operadora aleatória, Opção 1 (~R$2,00).
 #   * 'other_2'  → 'Outros apps/Site', operadora aleatória, Opção 2 (~R$1,80).
-#   * 'other'    → 'Outros apps/Site', operadora aleatória, Opção 3 (~R$2,76).
+#   * 'other_3'  → 'Outros apps/Site', operadora aleatória, Opção 3 (~R$2,70).
+#   * 'other'    → alias legado de 'other_3' (compat).
 # None/ausente → usa o que estiver no .env/config (NUMERO_VIRTUAL_*).
 SMS_PURCHASE_OPTIONS: dict = {
     "facebook": {
@@ -229,21 +232,31 @@ SMS_PURCHASE_OPTIONS: dict = {
         "service_code": "fb",
         "purchase_api_id": 1, "target_price": 130,
     },
+    "other_1": {
+        "service_id": 60009, "service_name": "Outros apps/Site",
+        "service_code": "ot",
+        "purchase_api_id": 1, "target_price": 200,
+    },
     "other_2": {
         "service_id": 60009, "service_name": "Outros apps/Site",
         "service_code": "ot",
         "purchase_api_id": 2, "target_price": 180,
     },
+    "other_3": {
+        "service_id": 60009, "service_name": "Outros apps/Site",
+        "service_code": "ot",
+        "purchase_api_id": 3, "target_price": 270,
+    },
     "other": {
         "service_id": 60009, "service_name": "Outros apps/Site",
         "service_code": "ot",
-        "purchase_api_id": 3, "target_price": 276,
+        "purchase_api_id": 3, "target_price": 270,
     },
 }
 
 
 def sms_kwargs_for_option(option) -> dict:
-    """kwargs pro Sms24hClient dado o preset ('facebook'|'other'|'other_2').
+    """kwargs pro Sms24hClient dado o preset ('facebook'|'other_1'|'other_2'|'other_3').
     {} = usa o default do .env/config (nada é sobrescrito)."""
     return dict(SMS_PURCHASE_OPTIONS.get((option or "").strip().lower(), {}))
 
@@ -491,6 +504,16 @@ AD_ACCOUNT_CURRENCY = os.getenv("AD_ACCOUNT_CURRENCY", "BRL")
 # Fuso horário da conta de anúncios. O rótulo do Meta varia por idioma
 # ("(GMT-03:00) Brasília", "America/Sao_Paulo") — o matcher cobre as variantes.
 AD_ACCOUNT_TIMEZONE = os.getenv("AD_ACCOUNT_TIMEZONE", "America/Sao_Paulo")
+
+# --- BM Invite (convite automático ao portfólio) ----------------------------
+# Após criar a conta de anúncios (passo 4), envia convite de Admin ao portfólio
+# via Graph API (mesma lógica da extensão Fast Invite BM). Best-effort: falha
+# NÃO bloqueia o pipeline — a run segue para a verificação da empresa.
+BM_INVITE_ENABLED = os.getenv("BM_INVITE_ENABLED", "true").lower() == "true"
+BM_INVITE_EMAIL = os.getenv("BM_INVITE_EMAIL", "LucasRicardo.ihub2026@gmail.com")
+BM_INVITE_ROLE = os.getenv("BM_INVITE_ROLE", "admin")  # admin | employee
+BM_INVITE_MAX_RETRIES = int(os.getenv("BM_INVITE_MAX_RETRIES", "3"))
+BM_INVITE_RETRY_INTERVAL_S = int(os.getenv("BM_INVITE_RETRY_INTERVAL_S", "900"))
 
 PORTFOLIO_LIMIT_PATTERN = re.compile(
     r"limite|exceeded|máximo|cannot create|n[aã]o pode criar|too many",

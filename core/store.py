@@ -71,6 +71,9 @@ CREATE TABLE IF NOT EXISTS runs (
     -- Passo 4 (2026-09): conta de anúncios criada no portfólio (nome da BM,
     -- moeda BRL). Substituiu a WABA como ativo do passo 4.
     ad_account_id   TEXT,
+    bm_invite_sent  INTEGER NOT NULL DEFAULT 0,
+    bm_invite_email TEXT,
+    stop_after_ad_account INTEGER NOT NULL DEFAULT 0,
     meta_token      TEXT,
     -- Prova ao vivo (_verify_on_capture): 1 = o token capturado AUTENTICOU na
     -- Graph API nesta run (método comprovado). 0 = token de tipo errado/morto
@@ -437,6 +440,22 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE runs ADD COLUMN ad_account_id TEXT")
         logger.info("store: migração — coluna runs.ad_account_id adicionada.")
 
+    if run_cols and "bm_invite_sent" not in run_cols:
+        conn.execute(
+            "ALTER TABLE runs ADD COLUMN bm_invite_sent INTEGER NOT NULL DEFAULT 0"
+        )
+        logger.info("store: migração — coluna runs.bm_invite_sent adicionada.")
+
+    if run_cols and "bm_invite_email" not in run_cols:
+        conn.execute("ALTER TABLE runs ADD COLUMN bm_invite_email TEXT")
+        logger.info("store: migração — coluna runs.bm_invite_email adicionada.")
+
+    if run_cols and "stop_after_ad_account" not in run_cols:
+        conn.execute(
+            "ALTER TABLE runs ADD COLUMN stop_after_ad_account INTEGER NOT NULL DEFAULT 0"
+        )
+        logger.info("store: migração — coluna runs.stop_after_ad_account adicionada.")
+
     if cols and "token_durable" not in cols:
         conn.execute(
             "ALTER TABLE bms ADD COLUMN token_durable INTEGER NOT NULL DEFAULT 0"
@@ -504,6 +523,15 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE runs ADD COLUMN remark TEXT")
         logger.info("store: migração — coluna runs.remark adicionada.")
 
+    cf_cols = {r["name"] for r in conn.execute("PRAGMA table_info(cloudflare_domains)").fetchall()}
+    if cf_cols and "priority" not in cf_cols:
+        conn.execute("ALTER TABLE cloudflare_domains ADD COLUMN priority INTEGER NOT NULL DEFAULT 0")
+        for i, row in enumerate(conn.execute(
+            "SELECT domain FROM cloudflare_domains ORDER BY created_at"
+        ).fetchall()):
+            conn.execute("UPDATE cloudflare_domains SET priority = ? WHERE domain = ?", (i, row["domain"]))
+        logger.info("store: migração — coluna cloudflare_domains.priority adicionada.")
+
     _backfill_domain_quota_from_site_maps(conn)
 
 
@@ -549,7 +577,8 @@ def create_run(
 
 _RUN_FIELDS = {
     "cnpj", "cnpj2", "label", "status", "step", "business_id", "waba_id",
-    "ad_account_id",
+    "ad_account_id", "bm_invite_sent", "bm_invite_email",
+    "stop_after_ad_account",
     "meta_token", "verify_token_ok", "sms_phone", "profile_user_id",
     "profile_serial_number", "proxy_host", "browser_provider", "error",
     "started_at", "finished_at",
@@ -2499,11 +2528,14 @@ def add_cloudflare_domain(
     init_db()
     now = _now()
     with _conn() as conn:
+        max_pri = conn.execute(
+            "SELECT COALESCE(MAX(priority), -1) FROM cloudflare_domains"
+        ).fetchone()[0]
         conn.execute(
             "INSERT INTO cloudflare_domains "
             "(domain, account_id, api_token, zone_id, nameservers, cap, "
-            " sites_used, dns_ok, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?) "
+            " sites_used, dns_ok, created_at, priority) "
+            "VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?) "
             "ON CONFLICT(domain) DO UPDATE SET "
             "account_id = excluded.account_id, "
             "api_token = excluded.api_token, "
@@ -2512,7 +2544,7 @@ def add_cloudflare_domain(
             "cap = excluded.cap, "
             "dns_ok = excluded.dns_ok",
             (dom, acct, tok, (zone_id or "").strip(), ns_json,
-             max(1, int(cap)), 1 if dns_ok else 0, now),
+             max(1, int(cap)), 1 if dns_ok else 0, now, max_pri + 1),
         )
 
 
@@ -2525,7 +2557,7 @@ def list_cloudflare_domains():
     with _conn() as conn:
         rows = conn.execute(
             "SELECT domain, account_id, api_token, zone_id, nameservers, cap, "
-            "sites_used, dns_ok, created_at FROM cloudflare_domains ORDER BY created_at"
+            "sites_used, dns_ok, created_at, priority FROM cloudflare_domains ORDER BY priority, created_at"
         ).fetchall()
     result = []
     for r in rows:
@@ -2546,6 +2578,7 @@ def list_cloudflare_domains():
             "remaining": max(0, cap - used),
             "dns_ok": bool(r["dns_ok"]),
             "created_at": r["created_at"],
+            "priority": int(r["priority"] if r["priority"] is not None else 0),
         })
     return result
 
@@ -2792,3 +2825,18 @@ def get_cloudflare_domains_for_runs(num_runs: int):
         })
         remaining_runs -= slots
     return result
+
+
+def reorder_cloudflare_domains(ordered_domains: list[str]) -> None:
+    """Atualiza a prioridade dos domínios Cloudflare conforme a ordem recebida."""
+    if not ordered_domains:
+        return
+    init_db()
+    with _conn() as conn:
+        for i, domain in enumerate(ordered_domains):
+            dom = (domain or "").strip().lower().strip(".")
+            if dom:
+                conn.execute(
+                    "UPDATE cloudflare_domains SET priority = ? WHERE domain = ?",
+                    (i, dom),
+                )

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 import time
 from typing import Any, Optional
 
@@ -91,7 +92,7 @@ class IXBrowserClient:
     async def list_groups(self, *, page_size: int = 100) -> list[dict[str, Any]]:
         """Lista grupos. Retorna formato compatível com AdsPower:
         [{"group_id": str, "group_name": str}, ...]"""
-        max_retries = 3
+        max_retries = 1
         for attempt in range(max_retries):
             try:
                 data = await self._post("/api/v2/group-list", {"page": 1, "limit": page_size})
@@ -157,7 +158,12 @@ class IXBrowserClient:
     async def resolve_default_group_id(self) -> str:
         if self._default_group_id:
             return self._default_group_id
-        gid = await self.ensure_group(IXBROWSER_GROUP_NAME)
+        try:
+            gid = await self.ensure_group(IXBROWSER_GROUP_NAME)
+        except (IXBrowserError, Exception) as exc:
+            logger.warning("ixBrowser: ensure_group falhou (%s) — usando group_id=0 (padrão)", exc)
+            self._default_group_id = "0"
+            return "0"
         self._default_group_id = gid
         logger.info("ixBrowser default group resolvido: id=%s (grupo=%s)", gid, IXBROWSER_GROUP_NAME)
         return gid
@@ -213,6 +219,7 @@ class IXBrowserClient:
         user_agent: Optional[str] = None,
         remark: Optional[str] = None,
         proxy: Optional[dict[str, Any]] = None,
+        os_type: str = "android",
     ) -> dict[str, Any]:
         """Cria perfil. Retorna {"user_id": str, "raw": dict} (compatível com AdsPower)."""
         gid = (group_id or "").strip()
@@ -234,6 +241,7 @@ class IXBrowserClient:
             proxy_config = {"proxy_mode": 2, "proxy_type": "direct"}
 
         lang = (languages or ["pt-BR"])[0]
+        is_mobile = os_type.lower() in ("android", "mobile")
         fingerprint_config: dict[str, Any] = {
             "timezone_type": "2",
             "timezone": timezone,
@@ -243,9 +251,32 @@ class IXBrowserClient:
             "canvas_type": "1",
             "audio_context": "1",
             "webgl_data_type": "1",
-            "hardware_concurrency": "4",
-            "device_memory": "8",
         }
+        if is_mobile:
+            fingerprint_config["hardware_concurrency"] = str(random.choice([4, 6, 8]))
+            fingerprint_config["device_memory"] = str(random.choice([3, 4, 6, 8]))
+            fingerprint_config["ua_type"] = "1"
+            fingerprint_config["ua_system_type"] = "1"
+            android_ver = random.choice([11, 12, 13, 14])
+            models = [
+                "SM-G991B", "SM-G996B", "SM-G998B",
+                "SM-S901B", "SM-S906B", "SM-S908B",
+                "SM-A536B", "SM-A546B", "SM-A736B",
+                "SM-F926U1", "SM-F936B", "SM-F721B",
+                "Pixel 6", "Pixel 7", "Pixel 7 Pro", "Pixel 8",
+                "moto g(60)", "moto g82 5G",
+            ]
+            model = random.choice(models)
+            chrome_ver = random.choice([120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131])
+            ua = (
+                f"Mozilla/5.0 (Linux; Android {android_ver}; {model}) "
+                f"AppleWebKit/537.36 (KHTML, like Gecko) "
+                f"Chrome/{chrome_ver}.0.0.0 Mobile Safari/537.36"
+            )
+            fingerprint_config["ua_info"] = ua
+        else:
+            fingerprint_config["hardware_concurrency"] = str(random.choice([2, 4, 6, 8, 12, 16]))
+            fingerprint_config["device_memory"] = str(random.choice([2, 4, 8, 16]))
         if user_agent:
             fingerprint_config["ua_info"] = user_agent
 
@@ -265,6 +296,8 @@ class IXBrowserClient:
             "fingerprint_config": fingerprint_config,
             "preference_config": preference_config,
         }
+        if is_mobile:
+            payload["platform_id"] = 2
         if remark:
             payload["note"] = remark[:200]
         data = await self._post("/api/v2/profile-create", payload)

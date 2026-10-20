@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Search, Clock, User, KeyRound, FileText, Wifi, CheckCircle, Cpu, Building2, Download, Timer, Activity, AlertTriangle, Zap } from "lucide-react"
+import { Search, Clock, User, KeyRound, FileText, Wifi, CheckCircle, Cpu, Building2, Download, Timer, Activity, AlertTriangle, Zap, Mail } from "lucide-react"
 import { api } from "../api.js"
 import { usePolling } from "../hooks.js"
 import { timeAgo, toMs, fmtDuration } from "../utils.js"
@@ -7,11 +7,11 @@ import { Badge, Card, CopyButton, Freshness, PageHead, Skeleton, inputCls } from
 
 const TONE = {
   success: 'green', incomplete: 'amber', failed: 'danger',
-  running: 'running', queued: 'neutral', cancelled: 'neutral', assumed: 'amber',
+  running: 'running', queued: 'neutral', cancelled: 'neutral', assumed: 'amber', paused: 'sky',
 }
 const LABEL = {
   success: '100%', incomplete: 'incompleto', failed: 'falhou',
-  running: 'rodando', queued: 'na fila', cancelled: 'cancelada', assumed: 'assumido',
+  running: 'rodando', queued: 'na fila', cancelled: 'cancelada', assumed: 'assumido', paused: 'pausada',
 }
 
 // Chips de filtro por status.
@@ -271,6 +271,7 @@ export default function Historico() {
                   <Th icon={Timer}>Duração</Th>
                   <Th icon={CheckCircle}>Status</Th>
                   <Th icon={Building2}>BM ID</Th>
+                  <Th icon={Mail}>BM Invite</Th>
                 </tr>
               </thead>
               <tbody>
@@ -309,8 +310,16 @@ export default function Historico() {
                       <td className="px-4 py-3 whitespace-nowrap">
                         {dur ? <span className="font-mono text-xs font-semibold text-neutral-700 dark:text-emerald-100/80 tabular-nums">{dur}</span> : <span className="text-neutral-300 dark:text-neutral-700">—</span>}
                       </td>
-                      <td className="px-4 py-3"><Badge tone={TONE[r.status] || 'neutral'}>{LABEL[r.status] || r.status}</Badge></td>
+                      <td className="px-4 py-3">
+                        <Badge tone={TONE[r.status] || 'neutral'}>{LABEL[r.status] || r.status}</Badge>
+                        {!!r.stop_after_ad_account && <span className="ml-1 text-[10px] text-amber-600 dark:text-amber-400 font-semibold" title="Modo: até conta de anúncios">Ad Acc</span>}
+                      </td>
                       <td className="px-4 py-3"><Mono value={r.business_id} max="max-w-[150px]" /></td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {r.bm_invite_sent
+                          ? <span className="inline-flex items-center gap-1 rounded-md bg-lime-100 dark:bg-emerald-500/15 text-lime-700 dark:text-emerald-300 ring-1 ring-inset ring-lime-400/30 px-2 py-0.5 text-[11px] font-bold" title={r.bm_invite_email || ''}>✓ Enviado</span>
+                          : <span className="text-neutral-300 dark:text-neutral-700">—</span>}
+                      </td>
                     </tr>
                   )
                 })}

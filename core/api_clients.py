@@ -18,6 +18,7 @@ import json
 import logging
 import random
 import re
+import string
 import unicodedata
 from typing import Any, Optional
 
@@ -976,15 +977,19 @@ class Sms24hClient:
         # manual, 2026-09). `_resolve_service_entry` já escolheu a entrada com o
         # preço-alvo; mandamos esse preço na compra pra travar a faixa certa.
         target = int(entry.get("price") or self.target_price or 0)
+        op_val = self.operator.strip().lower() if self.operator else None
         inner = {
             "countryId": int(entry.get("countryId") or self.country_id),
             "serviceId": int(entry["serviceId"]),
-            "operator": None,
+            "operator": op_val,
             "apiId": self.purchase_api_id,
             "ddd": None,
         }
         if target > 0:
             inner["price"] = target
+        meta_values: dict[str, Any] = {"ddd": ["undefined"]}
+        if not op_val:
+            meta_values["operator"] = ["undefined"]
         # BLINDAGEM: tenta COM price (trava a faixa R$1,30); se a numero-virtual
         # rejeitar o campo desconhecido, refaz SEM price (comportamento antigo)
         # em vez de deixar a compra do SMS quebrar de vez.
@@ -997,7 +1002,7 @@ class Sms24hClient:
             _payload = {
                 "0": {
                     "json": _inner,
-                    "meta": {"values": {"operator": ["undefined"], "ddd": ["undefined"]}},
+                    "meta": {"values": meta_values},
                 }
             }
             logger.info(
@@ -1586,3 +1591,128 @@ class SmsRushClient:
                 activation_id, status, exc,
             )
             return False
+
+
+# ---------------------------------------------------------------------------
+# TigrMail — Email temporário com API (tigrmail.com)
+# ---------------------------------------------------------------------------
+class TigrMailError(Exception):
+    pass
+
+
+class TigrMailClient:
+    """Cliente para api.tigrmail.com — cria inboxes descartáveis e lê mensagens.
+
+    A API do TigrMail faz long-polling nativo (espera até 3 min por mensagem),
+    então não precisamos de loop de polling manual para cada chamada.
+    """
+
+    BASE_URL = "https://api.tigrmail.com"
+
+    def __init__(self, *, api_token: str = "", request_timeout_s: float = 200.0) -> None:
+        from config import TIGRMAIL_API_TOKEN  # noqa: PLC0415
+        self._token = api_token or TIGRMAIL_API_TOKEN
+        self._timeout = request_timeout_s
+        self._http: Optional[httpx.AsyncClient] = None
+        self.inbox: Optional[str] = None
+
+    async def __aenter__(self) -> "TigrMailClient":
+        self._http = httpx.AsyncClient(timeout=self._timeout)
+        return self
+
+    async def __aexit__(self, *exc: Any) -> None:
+        if self._http:
+            await self._http.aclose()
+            self._http = None
+
+    def _headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self._token}"}
+
+    async def _ensure_http(self) -> httpx.AsyncClient:
+        if self._http is None:
+            self._http = httpx.AsyncClient(timeout=self._timeout)
+        return self._http
+
+    async def get_domains(self) -> list[str]:
+        http = await self._ensure_http()
+        resp = await http.get(f"{self.BASE_URL}/v1/domains", headers=self._headers())
+        resp.raise_for_status()
+        return resp.json().get("domains", [])
+
+    async def create_inbox(self, domain: str = "") -> str:
+        http = await self._ensure_http()
+        body: dict[str, Any] = {}
+        if domain:
+            body["domain"] = domain
+        resp = await http.post(
+            f"{self.BASE_URL}/v1/inboxes",
+            headers={**self._headers(), "Content-Type": "application/json"},
+            json=body,
+        )
+        if resp.status_code not in (200, 201):
+            raise TigrMailError(f"Criar inbox falhou ({resp.status_code}): {resp.text[:200]}")
+        self.inbox = resp.json()["inbox"]
+        logger.info("tigrmail inbox criado: %s", self.inbox)
+        return self.inbox
+
+    async def get_message(
+        self,
+        inbox: str = "",
+        *,
+        subject_contains: str = "",
+        from_domain: str = "",
+    ) -> Optional[dict[str, Any]]:
+        http = await self._ensure_http()
+        params: dict[str, str] = {"inbox": inbox or self.inbox or ""}
+        if subject_contains:
+            params["subjectContains"] = subject_contains
+        if from_domain:
+            params["fromDomain"] = from_domain
+        try:
+            resp = await http.get(
+                f"{self.BASE_URL}/v1/messages",
+                headers=self._headers(),
+                params=params,
+            )
+            if resp.status_code == 200:
+                return resp.json().get("message")
+            return None
+        except httpx.ReadTimeout:
+            return None
+
+    async def wait_for_code(
+        self,
+        *,
+        max_attempts: int = 3,
+        from_domain: str = "facebookmail.com",
+    ) -> Optional[str]:
+        inbox = self.inbox or ""
+        for attempt in range(1, max_attempts + 1):
+            logger.info("tigrmail polling attempt %d/%d inbox=%s", attempt, max_attempts, inbox)
+            msg = await self.get_message(
+                inbox,
+                from_domain=from_domain,
+            )
+            if msg:
+                body = msg.get("body", "")
+                subject = msg.get("subject", "")
+                logger.info("tigrmail mensagem recebida: subject=%s from=%s", subject, msg.get("from", ""))
+                code = self._extract_code(body) or self._extract_code(subject)
+                if code:
+                    logger.info("tigrmail código extraído: %s", code)
+                    return code
+                logger.warning("tigrmail mensagem sem código: %s", body[:200])
+        return None
+
+    @staticmethod
+    def _extract_code(text: str) -> Optional[str]:
+        patterns = [
+            r'(?:FB|código|code|verificação|confirmation)[:\s-]*(\d{5,8})',
+            r'(\d{5,8})\s*(?:é seu|is your|código|code)',
+            r'\b(\d{5,8})\b',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                return match.group(1)
+        return None

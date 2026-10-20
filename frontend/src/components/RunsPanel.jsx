@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ChevronRight, Search, Terminal, Fingerprint, Recycle, Hand, Play,
+  ChevronRight, Search, Terminal, Fingerprint, Recycle, Hand, Play, Pause,
   Building2, RotateCcw, PencilLine, Power, Download, Undo2,
 } from 'lucide-react'
 import { api } from '../api.js'
@@ -55,16 +55,15 @@ function ActionBtn({ tone = 'emerald', icon: Icon, label, desc, busy, busyLabel,
 
 const TONE = {
   success: 'green', incomplete: 'amber', failed: 'danger',
-  running: 'running', queued: 'neutral', cancelled: 'neutral', assumed: 'amber',
+  running: 'running', queued: 'neutral', cancelled: 'neutral', assumed: 'amber', paused: 'sky',
 }
 const LABEL = {
   success: '100% concluído', incomplete: 'incompleto', failed: 'falhou',
-  running: 'rodando', queued: 'na fila', cancelled: 'encerrado', assumed: 'assumido',
+  running: 'rodando', queued: 'na fila', cancelled: 'encerrado', assumed: 'assumido', paused: 'pausada',
 }
-// Curtos para a lista estreita (evita quebra de linha).
 const SHORT = {
   success: '100%', incomplete: 'incompleto', failed: 'falhou',
-  running: 'rodando', queued: 'fila', cancelled: 'encerrado', assumed: 'assumido',
+  running: 'rodando', queued: 'fila', cancelled: 'encerrado', assumed: 'assumido', paused: 'pausada',
 }
 
 // Extrai motivo de falha a partir do erro e etapa (mesma lógica do backend)
@@ -331,6 +330,34 @@ export default function RunsPanel({ variant = 'page', focusRunId = null }) {
     }
   }
 
+  // Pausar: o bot entra em espera no próximo checkpoint, sem cancelar nada.
+  const pauseRun = async () => {
+    if (!sel) return
+    setBusyAction('pause'); setRetrying(true); setRetryMsg(null)
+    try {
+      const res = await api.pauseRun(sel.run_id)
+      setRetryMsg({ ok: true, text: res.message })
+    } catch (e) {
+      setRetryMsg({ ok: false, text: e.message })
+    } finally {
+      setRetrying(false); setBusyAction(null)
+    }
+  }
+
+  // Retomar: continua a run pausada de onde parou.
+  const resumePaused = async () => {
+    if (!sel) return
+    setBusyAction('resume'); setRetrying(true); setRetryMsg(null)
+    try {
+      const res = await api.resumeRun(sel.run_id)
+      setRetryMsg({ ok: true, text: res.message })
+    } catch (e) {
+      setRetryMsg({ ok: false, text: e.message })
+    } finally {
+      setRetrying(false); setBusyAction(null)
+    }
+  }
+
   // Assumir: para o bot mas MANTÉM o perfil aberto p/ conclusão manual.
   const assume = async () => {
     if (!sel) return
@@ -497,6 +524,7 @@ export default function RunsPanel({ variant = 'page', focusRunId = null }) {
               <InfoChip label="Duração" value={sel.started_at ? fmtDuration(sel.started_at, sel.finished_at) : null} />
               <InfoChip label="BM ID" value={sel.business_id} mono />
               <InfoChip label="WABA" value={sel.waba_id} mono />
+              <InfoChip label="BM Invite" value={sel.bm_invite_sent ? `✓ ${sel.bm_invite_email || 'enviado'}` : null} />
             </div>
           </div>
 
@@ -511,8 +539,18 @@ export default function RunsPanel({ variant = 'page', focusRunId = null }) {
                 <ActionBtn tone="teal" icon={Undo2} label="Recuperar Conta + CNPJ" desc="devolve os DOIS ao pool"
                   busy={busyAction === 'recover'} busyLabel="Recuperando…" onClick={recoverAccountCnpj} disabled={retrying}
                   title="Devolve CONTA e CNPJ ao pool. Use quando a run falhou ANTES de criar a BM (AdsPower fechado, proxy, pré-flight) — nada foi gasto na Meta." />
-                {sel.status !== 'cancelled' && sel.status !== 'assumed' && (
+                {sel.status === 'paused' && (
+                  <ActionBtn tone="emerald" icon={Play} label="Retomar" desc="continua de onde parou"
+                    busy={busyAction === 'resume'} busyLabel="Retomando…" onClick={resumePaused} disabled={retrying}
+                    title="Retoma a run de onde parou — o bot continua o mesmo pipeline, mesma task, sem criar run nova." />
+                )}
+                {sel.status !== 'cancelled' && sel.status !== 'assumed' && sel.status !== 'paused' && (
                   <>
+                    {sel.status === 'running' && (
+                      <ActionBtn tone="sky" icon={Pause} label="Pausar" desc="espera no próximo checkpoint"
+                        busy={busyAction === 'pause'} busyLabel="Pausando…" onClick={pauseRun} disabled={retrying}
+                        title="Pausa temporariamente — o bot espera no próximo checkpoint seguro (browser e perfil ficam abertos). Use 'Retomar' depois." />
+                    )}
                     <ActionBtn tone="sky" icon={Hand} label="Assumir" desc="para o bot, perfil fica aberto"
                       busy={busyAction === 'assume'} busyLabel="Assumindo…" onClick={assume} disabled={retrying}
                       title="Para o bot e MANTÉM o perfil AdsPower aberto p/ você concluir manualmente. Mostra em que etapa parou." />

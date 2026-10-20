@@ -1,5 +1,6 @@
 ================================================================================
-     SR-VORTEX  -  LEIA ANTES DE INICIAR O BOT  (macOS)
+     SR-VORTEX  -  LEIA ANTES DE INICIAR O BOT
+     Funciona em Windows E macOS
 ================================================================================
 
 Leia TUDO antes de fazer qualquer coisa.
@@ -10,102 +11,90 @@ Siga na ordem. Cada passo depende do anterior.
   PASSO 1  -  EXTRAIR O ZIP
 ================================================================================
 
-  - Clique duas vezes no arquivo SR-VORTEX-XXXXX.zip
-  - Ele vai criar uma pasta SR-VORTEX no mesmo lugar
-  - Mova essa pasta para um local facil, tipo:
-      ~/Desktop/SR-VORTEX
-    ou
-      ~/Documents/SR-VORTEX
+  WINDOWS:
+    - Clique com o botao direito no arquivo SR-VORTEX-XXXXX.zip
+    - Escolha "Extrair tudo..." (ou use o WinRAR / 7-Zip)
+    - Extraia para uma pasta facil, tipo:
+        D:\SR-VORTEX
+      ou
+        C:\Users\SeuNome\Desktop\SR-VORTEX
 
-  >>> NAO extraia dentro de pastas do sistema (/System, /Library) <<<
+  MAC:
+    - Clique duplo no .zip (extrai automaticamente no Finder)
+    - Mova a pasta SR-VORTEX para onde quiser, tipo:
+        ~/Desktop/SR-VORTEX
+      ou
+        ~/Documents/SR-VORTEX
 
-
-================================================================================
-  PASSO 2  -  INSTALAR HOMEBREW, PYTHON E NODE.JS
-================================================================================
-
-  Abra o Terminal (Cmd+Espaco, digite "Terminal", Enter).
-
-  Se voce NAO tem o Homebrew instalado, cole este comando:
-
-      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-  Siga as instrucoes na tela. No final, ele pede pra rodar 2 comandos
-  pra adicionar o brew ao PATH — rode os dois.
-
-  Depois instale Python e Node:
-
-      brew install python node git
-
-  Espere terminar. Para conferir:
-
-      python3 --version
-      node --version
-
-  Se aparecer as versoes (ex: Python 3.12.x e v22.x.x), esta tudo ok.
+  >>> NAO extraia dentro de pastas do sistema <<<
+  >>> NAO deixe dentro de pastas com acentos no caminho <<<
 
 
 ================================================================================
-  PASSO 3  -  INSTALAR DEPENDENCIAS DO BOT
+  PASSO 2  -  INSTALAR DEPENDENCIAS
 ================================================================================
 
-  Agora que Python e Node estao instalados, va ate a pasta do projeto
-  e de DUPLO CLIQUE no arquivo:
+  O instalador automatico cuida de TUDO: Python, Node, Playwright,
+  Tesseract, npm install. Pode levar de 3 a 10 minutos.
 
-      INSTALAR_DEPENDENCIAS.command
+  -----------------------------------------------------------------------
+  WINDOWS:
+  -----------------------------------------------------------------------
 
-  Se aparecer "permissao negada", clique com botao direito > Abrir.
-  Ou rode no Terminal:
+  Duplo clique em: INSTALAR_DEPENDENCIAS.bat
 
-      cd ~/Desktop/SR-VORTEX
+  Na primeira vez, rode como administrador:
+    Botao direito > "Executar como administrador"
+
+  Se o CMD fechar sozinho:
+    Abra o CMD (Win+R > cmd > Enter)
+    cd /d D:\SR-VORTEX
+    INSTALAR_DEPENDENCIAS.bat
+
+  -----------------------------------------------------------------------
+  MAC:
+  -----------------------------------------------------------------------
+
+  Duplo clique em: INSTALAR_DEPENDENCIAS.command
+
+  Se aparecer "nao pode ser aberto porque e de um desenvolvedor nao identificado":
+    Botao direito > Abrir > Abrir
+
+  Se aparecer "permissao negada":
+    Abra o Terminal, va ate a pasta do projeto e rode:
+      chmod +x *.command
       bash INSTALAR_DEPENDENCIAS.command
 
-  Ele vai:
-    - Criar o ambiente Python (pasta venv/)
-    - Instalar todas as bibliotecas do Python
-    - Instalar o navegador do Playwright (Chromium)
-    - Instalar as dependencias do frontend (Node/npm)
-    - Instalar o Tesseract OCR (leitura de documentos)
-
-  Isso pode levar de 3 a 10 minutos dependendo da internet.
-  Espere terminar. No final ele mostra "INSTALACAO CONCLUIDA".
+  Pre-requisito Mac: Homebrew (https://brew.sh)
+  O instalador tenta instalar o Homebrew se nao tiver.
 
   -----------------------------------------------------------------------
-  SE PREFERIR INSTALAR MANUALMENTE PELO TERMINAL:
+  INSTALACAO MANUAL (os 2 sistemas):
   -----------------------------------------------------------------------
 
-  1. Ir ate a pasta do projeto:
+  Se preferir instalar manualmente:
 
-      cd ~/Desktop/SR-VORTEX
+  WINDOWS (PowerShell):
+    cd D:\SR-VORTEX
+    python -m venv venv
+    .\venv\Scripts\Activate.ps1
+    pip install --upgrade pip
+    pip install -r requirements.txt
+    python -m playwright install chromium
+    cd frontend && npm install && cd ..
 
-  2. Criar o ambiente Python:
-
-      python3 -m venv venv
-
-  3. Ativar o ambiente:
-
-      source venv/bin/activate
-
-  4. Instalar bibliotecas Python:
-
-      pip install --upgrade pip
-      pip install -r requirements.txt
-
-  5. Instalar o navegador do Playwright:
-
-      python -m playwright install chromium
-
-  6. Instalar o frontend (Node):
-
-      cd frontend
-      npm install
-      cd ..
-
-  Pronto. Tudo instalado.
+  MAC (Terminal):
+    cd ~/Desktop/SR-VORTEX
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install --upgrade pip
+    pip install -r requirements.txt
+    python -m playwright install chromium
+    cd frontend && npm install && cd ..
 
 
 ================================================================================
-  PASSO 4  -  CONFIGURAR O ARQUIVO .env
+  PASSO 3  -  CONFIGURAR O ARQUIVO .env
 ================================================================================
 
   Este e o passo MAIS IMPORTANTE. Sem isso o bot NAO funciona.
@@ -114,8 +103,12 @@ Siga na ordem. Cada passo depende do anterior.
 
       .env
 
-  Abra com o TextEdit ou VS Code. Se nao aparecer no Finder, aperte
-  Cmd+Shift+. (ponto) para mostrar arquivos ocultos.
+  WINDOWS: Abra com o Bloco de Notas (clique direito > Abrir com > Bloco de Notas).
+  MAC: Abra com TextEdit ou VS Code. No Terminal: nano .env
+
+  Se nao aparecer o arquivo, ative "Mostrar arquivos ocultos":
+    Windows: Explorador > Ver > Mostrar itens ocultos
+    Mac: No Finder, aperte Cmd+Shift+. (ponto)
 
   Voce precisa preencher OBRIGATORIAMENTE estas linhas:
 
@@ -129,9 +122,9 @@ Siga na ordem. Cada passo depende do anterior.
                           | Exemplo: minha_senha_forte
   -----------------------------------------------------------------------
   PANEL_AUTH_SECRET       | Uma chave de seguranca aleatoria.
-                          | Abra o Terminal e digite:
+                          | Abra o PowerShell e digite:
                           |
-                          |   python3 -c "import secrets;print(secrets.token_urlsafe(48))"
+                          |   python -c "import secrets;print(secrets.token_urlsafe(48))"
                           |
                           | Copie o resultado e cole nessa linha.
   -----------------------------------------------------------------------
@@ -162,7 +155,7 @@ Siga na ordem. Cada passo depende do anterior.
   >>> NUNCA use # (cerquilha/hashtag) dentro de valores no .env <<<
   >>> O Python interpreta # como comentario e corta o valor <<<
 
-  Depois de preencher, salve o arquivo (Cmd+S) e feche.
+  Depois de preencher, salve o arquivo (Ctrl+S) e feche.
 
 
 ================================================================================
@@ -176,16 +169,25 @@ Siga na ordem. Cada passo depende do anterior.
   A chave de API do AdsPower (ADSPOWER_API_KEY no .env) e OPCIONAL.
   O bot funciona sem ela. So preencha se quiser.
 
+  Os perfis de navegador, proxies e contas Facebook serao cadastrados
+  pelo painel do bot depois que ele estiver rodando.
+
 
 ================================================================================
   PASSO 6  -  INICIAR O BOT
 ================================================================================
 
-  Tudo pronto? Agora e so dar DUPLO CLIQUE em:
+  Tudo pronto? Agora e so iniciar:
 
-      INICIAR_TUDO.command
+  WINDOWS:
+    Duplo clique em: INICIAR_TUDO.bat
 
-  Ele abre DUAS janelas do Terminal:
+  MAC:
+    Duplo clique em: INICIAR_TUDO.command
+    ou
+    Duplo clique em: INICIAR_AUTOMACAO.command (tambem abre AdsPower e Chrome)
+
+  Ele abre DUAS janelas:
     - Backend  = servidor da API   em http://localhost:8000
     - Frontend = painel visual     em http://localhost:5173
 
@@ -193,29 +195,32 @@ Siga na ordem. Cada passo depende do anterior.
   Faca login com o PANEL_USERNAME e PANEL_PASSWORD que voce definiu.
 
   -----------------------------------------------------------------------
-  SE PREFERIR INICIAR PELO TERMINAL:
+  SE PREFERIR INICIAR MANUALMENTE:
   -----------------------------------------------------------------------
 
-  Abra DOIS Terminais separados.
+  Abra DOIS terminais separados.
 
-  No primeiro (backend):
+  WINDOWS — Terminal 1 (backend):
+      cd D:\SR-VORTEX
+      .\venv\Scripts\Activate.ps1
+      python -m uvicorn api_server:app --host 0.0.0.0 --port 8000 --reload
 
+  MAC — Terminal 1 (backend):
       cd ~/Desktop/SR-VORTEX
       source venv/bin/activate
       python -m uvicorn api_server:app --host 0.0.0.0 --port 8000 --reload
 
-  No segundo (frontend):
-
-      cd ~/Desktop/SR-VORTEX/frontend
+  Terminal 2 (frontend — igual nos 2 sistemas):
+      cd <pasta>/frontend
       npm run dev
 
   Abra o navegador em: http://localhost:5173
 
   -----------------------------------------------------------------------
 
-  Se preferir abrir separado:
-    - INICIAR_BACKEND.command  = so o servidor
-    - INICIAR_FRONTEND.command = so o painel
+  Scripts separados:
+    Windows: INICIAR_BACKEND.bat / INICIAR_FRONTEND.bat
+    Mac:     INICIAR_BACKEND.command / INICIAR_FRONTEND.command
 
   Para PARAR o bot: feche as duas janelas (ou Ctrl+C em cada uma).
 
@@ -252,27 +257,98 @@ Siga na ordem. Cada passo depende do anterior.
 ================================================================================
 
   1. Abra o AdsPower e faca login
-  2. De duplo clique em INICIAR_TUDO.command
+  2. De duplo clique em INICIAR_TUDO.bat
   3. Acesse http://localhost:5173 no navegador
   4. Faca login
   5. Ative o Autopilot ou inicie runs manuais
 
+  O autopilot roda sozinho 24/7 criando e verificando BMs.
+  Voce so precisa manter a maquina ligada, o AdsPower aberto e
+  ter recursos no pool (contas, CNPJs, proxies).
+
 
 ================================================================================
-  PROBLEMAS COMUNS
+  PROBLEMAS COMUNS — WINDOWS
 ================================================================================
 
-  PROBLEMA: "Permissao negada" ao clicar num .command
-  SOLUCAO:  Clique com botao direito > Abrir
-            Ou rode no Terminal: chmod +x *.command
+  PROBLEMA: "CMD fecha sozinho ao rodar um .bat"
+  SOLUCAO:  Abra o CMD manualmente (Win+R > cmd > Enter)
+            Navegue ate a pasta: cd /d D:\SR-VORTEX
+            Rode o .bat pelo CMD: INSTALAR_DEPENDENCIAS.bat
+            Assim voce ve o erro antes de fechar
 
-  PROBLEMA: "python3 nao encontrado"
-  SOLUCAO:  Instale com: brew install python
-            Se nao tem Homebrew, instale primeiro (veja PASSO 2)
+  PROBLEMA: "python nao e reconhecido como comando"
+  SOLUCAO:  O Python nao esta no PATH. Tente:
+              py --version
+            Se funcionar, use "py" em vez de "python".
+            Se nao funcionar, reinstale o Python marcando "Add to PATH".
+
+  PROBLEMA: "Erro de permissao no PowerShell (scripts desabilitados)"
+  SOLUCAO:  Rode como Admin:
+              Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+
+  PROBLEMA: "Erro ao iniciar / venv quebrada"
+  SOLUCAO:  Apague a pasta venv/ inteira e rode no PowerShell:
+              cd D:\SR-VORTEX
+              python -m venv venv
+              .\venv\Scripts\Activate.ps1
+              pip install -r requirements.txt
+              python -m playwright install chromium
+
+  PROBLEMA: "Frontend nao abre / erro de node_modules"
+  SOLUCAO:  Rode no PowerShell:
+              cd D:\SR-VORTEX\frontend
+              Remove-Item -Recurse -Force node_modules
+              npm install
+
+
+================================================================================
+  PROBLEMAS COMUNS — MAC
+================================================================================
+
+  PROBLEMA: "Nao foi possivel abrir porque o desenvolvedor nao pode ser verificado"
+  SOLUCAO:  Botao direito no arquivo > Abrir > Abrir
+            Isso so acontece na primeira vez.
+
+  PROBLEMA: "Permissao negada" ao rodar um .command
+  SOLUCAO:  Abra o Terminal, va ate a pasta do projeto e rode:
+              chmod +x *.command
+
+  PROBLEMA: "Python 3 nao encontrado"
+  SOLUCAO:  Instale via Homebrew:
+              brew install python@3.12
+            Se nao tiver Homebrew:
+              /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+  PROBLEMA: "Node nao encontrado"
+  SOLUCAO:  brew install node
+
+  PROBLEMA: "venv quebrada (copiada de outro Mac)"
+  SOLUCAO:  No Terminal:
+              cd ~/Desktop/SR-VORTEX
+              rm -rf venv
+              python3 -m venv venv
+              source venv/bin/activate
+              pip install -r requirements.txt
+              python -m playwright install chromium
+
+  PROBLEMA: "node_modules com erro (outro Mac/arquitetura)"
+  SOLUCAO:  No Terminal:
+              cd ~/Desktop/SR-VORTEX/frontend
+              rm -rf node_modules package-lock.json
+              npm install
+
+  PROBLEMA: "Playwright: browser was not installed"
+  SOLUCAO:  venv/bin/python -m playwright install chromium
+
+
+================================================================================
+  PROBLEMAS COMUNS — AMBOS OS SISTEMAS
+================================================================================
 
   PROBLEMA: "Nao consigo acessar o painel"
   SOLUCAO:  Verifique se as 3 variaveis PANEL_* estao preenchidas no .env
-            Reinicie o backend (feche e abra INICIAR_BACKEND.command)
+            Reinicie o backend
 
   PROBLEMA: "AdsPower connection error"
   SOLUCAO:  O AdsPower precisa estar ABERTO e LOGADO na maquina
@@ -284,22 +360,12 @@ Siga na ordem. Cada passo depende do anterior.
             Verifique se o NUMERO_VIRTUAL_CUSTOMER_SESSION nao expirou
             (expira a cada ~7 dias, precisa renovar)
 
-  PROBLEMA: "Erro ao iniciar / venv quebrada"
-  SOLUCAO:  Apague a pasta venv/ inteira e rode no Terminal:
-              cd ~/Desktop/SR-VORTEX
-              python3 -m venv venv
-              source venv/bin/activate
-              pip install -r requirements.txt
-              python -m playwright install chromium
+  PROBLEMA: "Captcha manual toda hora"
+  SOLUCAO:  Preencha CAPSOLVER_API_KEY com sua chave do capsolver.com
+            Verifique o saldo no capsolver.com
 
-  PROBLEMA: "Frontend nao abre / erro de node_modules"
-  SOLUCAO:  Rode no Terminal:
-              cd ~/Desktop/SR-VORTEX/frontend
-              rm -rf node_modules
-              npm install
-
-  PROBLEMA: "Arquivo .env nao aparece no Finder"
-  SOLUCAO:  No Finder, aperte Cmd+Shift+. (ponto) para mostrar ocultos
+  PROBLEMA: "PDF comprovante nao gera"
+  SOLUCAO:  Preencha INFOSIMPLES_API_TOKEN no .env
 
 
 ================================================================================
@@ -312,12 +378,14 @@ Siga na ordem. Cada passo depende do anterior.
   Para renovar:
   1. Abra https://app.numero-virtual.com no navegador
   2. Faca login na sua conta
-  3. Aperte F12 (ou Cmd+Option+I no Mac)
+  3. Aperte F12 (ferramentas do desenvolvedor)
   4. Va em Application > Cookies > app.numero-virtual.com
   5. Encontre o cookie "customer_session"
   6. Copie o valor inteiro
   7. Cole no .env na linha NUMERO_VIRTUAL_CUSTOMER_SESSION=
   8. Reinicie o backend
+
+  O painel mostra quantos dias faltam para expirar na aba APIs.
 
 
 ================================================================================
