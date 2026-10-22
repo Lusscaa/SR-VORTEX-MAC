@@ -449,12 +449,16 @@ export default function Batch() {
     })
   }
 
+  const [untilExhausted, setUntilExhausted] = useState(true)
+
   const refreshAutopilot = () => api.stats().then((s) => {
     if (s.autopilot) {
       setAutoOn(!!s.autopilot.enabled)
-      setAutoTarget(s.autopilot.total_cycles || 3)
+      const tc = s.autopilot.total_cycles ?? 3
+      setAutoTarget(tc)
       setAutoCycle(s.autopilot.current_cycle || 0)
-      setAutoTotal(s.autopilot.total_cycles || 3)
+      setAutoTotal(tc)
+      setUntilExhausted(tc === 0)
     }
   }).catch(() => {})
   const refresh = () => { api.pools().then(setPools).catch(() => {}); refreshAutopilot() }
@@ -470,7 +474,7 @@ export default function Batch() {
   // Liga/desliga o piloto automático (ciclos sequenciais de runs simultâneas).
   const applyAutopilot = async (enabled, totalCycles) => {
     try {
-      const cycles = Math.max(1, Number(totalCycles) || 3)
+      const cycles = untilExhausted ? 0 : Math.max(1, Number(totalCycles) || 3)
       const runsPerCycle = Math.max(1, Number(count) || 1)
       const res = await api.setAutopilot(enabled, {
         runsPerCycle,
@@ -494,11 +498,12 @@ export default function Batch() {
         setAutoCycle(0)
       }
       const kicked = res?.kicked || 0
+      const cycleLabel = cycles === 0 ? 'ate esgotar contas' : `${cycles} ciclo(s)`
       setFeedback({
         ok: true,
         text: enabled
-          ? `Piloto Automático LIGADO — ${cycles} ciclo(s) de ${runsPerCycle} run(s).${kicked ? ` Ciclo 1/${cycles} iniciado (${kicked} run${kicked === 1 ? '' : 's'}).` : ' Aguardando as runs atuais terminarem para iniciar o Ciclo 1.'}`
-          : 'Piloto Automático desligado — ciclos interrompidos (runs em andamento seguem até o fim).',
+          ? `Piloto Automatico LIGADO — ${cycleLabel} de ${runsPerCycle} run(s).${kicked ? ` Ciclo 1 iniciado (${kicked} run${kicked === 1 ? '' : 's'}).` : ' Aguardando as runs atuais terminarem para iniciar o Ciclo 1.'}`
+          : 'Piloto Automatico desligado — ciclos interrompidos (runs em andamento seguem ate o fim).',
       })
     } catch (e) { setFeedback({ ok: false, text: e.message }) }
   }
@@ -1083,36 +1088,58 @@ export default function Batch() {
               </div>
             </div>
 
-            <label className="mt-3 text-xs text-neutral-500 dark:text-emerald-200/70 flex items-center gap-2 font-semibold uppercase tracking-wide">
-              Ciclos
-              <input
-                type="number" min={1} max={50} value={autoTarget}
-                onChange={(e) => setAutoTarget(e.target.value)}
-                onBlur={() => autoOn && applyAutopilot(true, autoTarget)}
-                className={`${inputCls} w-20`}
-              />
-              sequenciais
-            </label>
+            <div className="mt-3 flex items-center gap-4">
+              <label className="text-xs text-neutral-500 dark:text-emerald-200/70 flex items-center gap-2 font-semibold uppercase tracking-wide">
+                <button
+                  type="button"
+                  onClick={() => setUntilExhausted(!untilExhausted)}
+                  className={`rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide transition ${
+                    untilExhausted
+                      ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40'
+                      : 'bg-neutral-700/40 text-neutral-400 ring-1 ring-neutral-600/40'
+                  }`}
+                >
+                  {untilExhausted ? 'Ate esgotar' : 'Ciclos fixos'}
+                </button>
+                {!untilExhausted && (
+                  <input
+                    type="number" min={1} max={50} value={autoTarget}
+                    onChange={(e) => setAutoTarget(e.target.value)}
+                    onBlur={() => autoOn && applyAutopilot(true, autoTarget)}
+                    className={`${inputCls} w-20`}
+                  />
+                )}
+              </label>
+              <span className="text-xs text-neutral-400 dark:text-emerald-200/50">
+                Runs por ciclo: {Number(count) || 1}
+              </span>
+            </div>
 
             {autoOn && (
               <div className="mt-3 flex items-center gap-3 text-xs">
                 <span className="font-semibold text-emerald-700 dark:text-emerald-300">
-                  Ciclo {autoCycle}/{autoTotal}
+                  Ciclo {autoCycle}/{autoTotal === 0 ? 'INF' : autoTotal}
                 </span>
-                <span className="text-neutral-400 dark:text-emerald-200/50">
-                  Runs por ciclo: {Number(count) || 1}
-                </span>
-                <div className="flex-1 h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-emerald-400 transition-all"
-                    style={{ width: `${autoTotal > 0 ? (autoCycle / autoTotal) * 100 : 0}%` }}
-                  />
-                </div>
+                {autoTotal > 0 ? (
+                  <div className="flex-1 h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-emerald-400 transition-all"
+                      style={{ width: `${(autoCycle / autoTotal) * 100}%` }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex-1 h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
+                    <div className="h-full w-full rounded-full bg-emerald-400/60 animate-pulse" />
+                  </div>
+                )}
               </div>
             )}
 
             <p className="text-[11px] text-neutral-400 dark:text-emerald-200/40 mt-2 normal-case tracking-normal">
-              <b className="text-neutral-500 dark:text-emerald-200/70">Runs</b> = simultâneas por ciclo (campo acima). <b className="text-neutral-500 dark:text-emerald-200/70">Ciclos</b> = quantas vezes repete sequencialmente. Cada ciclo só inicia após o anterior fechar tudo (runs + navegadores).
+              {untilExhausted
+                ? <>Roda ate as contas FB acabarem. Cada ciclo repete <b className="text-emerald-200/70">{Number(count) || 1}</b> run(s) simultanea(s).</>
+                : <><b className="text-neutral-500 dark:text-emerald-200/70">Runs</b> = simultaneas por ciclo. <b className="text-neutral-500 dark:text-emerald-200/70">Ciclos</b> = quantas vezes repete sequencialmente.</>
+              }
             </p>
           </div>
 

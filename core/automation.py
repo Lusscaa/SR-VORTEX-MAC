@@ -1287,6 +1287,13 @@ class AutomationRunner:
                         or isinstance(exc, asyncio.TimeoutError)
                         or self._is_proxy_tunnel_error(exc)
                     )
+                    if self._is_terminal_login_failure(exc):
+                        logger.warning(
+                            "PROXYLESS: estado terminal (%s) — retry SEM sentido, "
+                            "conta perdida. Propagando erro.",
+                            getattr(self.last_result, "failure_state", "?"),
+                        )
+                        raise
                     if (
                         _is_login_fail
                         and not self._is_wrong_password(exc)
@@ -1309,8 +1316,6 @@ class AutomationRunner:
                         await self._reacquire_sms_for_retry()
                         await asyncio.sleep(self._TARGET_CLOSED_BACKOFF_S)
                         continue
-                    # Já em modo proxyless e login ainda falhou — tenta de novo
-                    # até esgotar o orçamento de tentativas.
                     if (
                         _is_login_fail
                         and not self._is_wrong_password(exc)
@@ -1431,6 +1436,21 @@ class AutomationRunner:
             except Exception:  # noqa: BLE001
                 pass
         self.adspower_user_id = None
+
+    _TERMINAL_FAILURE_STATES = frozenset({
+        "account_suspended", "account_disabled", "account_locked",
+        "rate_limited", "identity_selfie",
+    })
+
+    def _is_terminal_login_failure(self, exc: BaseException) -> bool:
+        """True quando o login falhou por estado terminal (conta bloqueada,
+        suspensa, desabilitada, rate-limited ou selfie). Trocar proxy não
+        resolve — a conta está perdida."""
+        if not isinstance(exc, LoginError):
+            return False
+        res = self.last_result
+        fs = getattr(res, "failure_state", "") if res is not None else ""
+        return fs in self._TERMINAL_FAILURE_STATES
 
     def _is_wrong_password(self, exc: BaseException) -> bool:
         """True p/ 'A senha inserida está incorreta' (failure_state=wrong_password).
@@ -3321,20 +3341,12 @@ class AutomationRunner:
             )
 
         # Modalidade "Até Conta de Anúncios": encerra aqui — sem WABA, sem
-        # BM Invite, sem verificação da empresa. A run é 100% nesse modo
-        # se ad_account foi criada. O BM Invite roda mesmo nesse modo
-        # (é best-effort e o operador quer o convite).
+        # BM Invite, sem verificação da empresa.
         if self.stop_after_ad_account:
-            try:
-                await self._send_bm_invite(page, result)
-            except self._NON_RETRYABLE:
-                raise
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("bm_invite: erro não tratado (%s) — continuando.", exc)
             result.stopped_at_ad_account = True
             logger.info(
                 "stop_after_ad_account: conta de anúncios concluída — "
-                "encerrando pipeline (sem WABA/verificação)."
+                "encerrando pipeline (sem WABA/BM-invite/verificação)."
             )
             return
 

@@ -69,7 +69,7 @@ def save_autopilot(
     state = {
         "enabled": enabled,
         "runs_per_cycle": max(1, int(runs_per_cycle)),
-        "total_cycles": max(1, int(total_cycles)),
+        "total_cycles": max(0, int(total_cycles)),
         "current_cycle": int(current_cycle),
         "use_proxy": use_proxy,
         "proxy_type": proxy_type,
@@ -90,14 +90,16 @@ def save_autopilot(
 
 def advance_cycle() -> dict:
     """Incrementa current_cycle. Desliga se todos os ciclos foram concluídos.
+    total_cycles=0 → modo 'até esgotar' (nunca desliga por contagem).
     Retorna o estado atualizado."""
     ap = load_autopilot()
     ap["current_cycle"] = ap.get("current_cycle", 0) + 1
-    if ap["current_cycle"] > ap.get("total_cycles", 1):
+    total = ap.get("total_cycles", 1)
+    if total > 0 and ap["current_cycle"] > total:
         ap["enabled"] = False
         logger.info(
             "Piloto Automático: todos os %d ciclos concluídos — DESLIGANDO.",
-            ap.get("total_cycles", 1),
+            total,
         )
     STATE_DIR.mkdir(exist_ok=True)
     AUTOPILOT_PATH.write_text(json.dumps(ap, indent=2))

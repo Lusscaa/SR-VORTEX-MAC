@@ -1942,7 +1942,8 @@ _autopilot_lock = threading.Lock()
 
 def _autopilot_next_cycle() -> None:
     """Avança para o próximo ciclo quando o ciclo atual termina.
-    Chamado pelo JobManager quando a última run ativa termina. Best-effort."""
+    Chamado pelo JobManager quando a última run ativa termina. Best-effort.
+    total_cycles=0 → modo 'até esgotar' (roda até pool vazio)."""
     ap = load_autopilot()
     if not ap.get("enabled"):
         return
@@ -1951,7 +1952,8 @@ def _autopilot_next_cycle() -> None:
             return
         current = ap.get("current_cycle", 0)
         total = ap.get("total_cycles", 1)
-        if current >= total:
+        unlimited = (total == 0)
+        if not unlimited and current >= total:
             advance_cycle()
             logger.info(
                 "Piloto Automático: Ciclo %d/%d foi o último — FINALIZADO.",
@@ -1962,7 +1964,9 @@ def _autopilot_next_cycle() -> None:
         if not ap.get("enabled"):
             return
         new_cycle = ap.get("current_cycle", 1)
+        label = "%d/INF" % new_cycle if unlimited else "%d/%d" % (new_cycle, total)
         runs = int(ap.get("runs_per_cycle", 1) or 1)
+        mode = ap.get("run_mode", "full")
         try:
             res = _do_enqueue(
                 runs,
@@ -1974,23 +1978,24 @@ def _autopilot_next_cycle() -> None:
                 dual_bm=ap.get("dual_bm", False),
                 browser_provider=ap.get("browser_provider", "adspower"),
                 waba_enabled=ap.get("waba_enabled", False),
+                stop_after_ad_account=(mode == "ad_account"),
             )
             n = res.get("enqueued", 0)
             if n > 0:
                 logger.info(
-                    "Piloto Automático: Ciclo %d/%d iniciado — %d run(s).",
-                    new_cycle, total, n,
+                    "Piloto Automático: Ciclo %s iniciado (%s) — %d run(s).",
+                    label, mode, n,
                 )
             else:
                 save_autopilot(enabled=False, **{k: ap[k] for k in ap if k != "enabled"})
                 logger.info(
-                    "Piloto Automático: pool vazio no Ciclo %d/%d — DESLIGANDO.",
-                    new_cycle, total,
+                    "Piloto Automático: pool vazio no Ciclo %s — DESLIGANDO.",
+                    label,
                 )
         except Exception as exc:  # noqa: BLE001
             logger.warning(
-                "Piloto Automático: falha ao iniciar Ciclo %d/%d (%s).",
-                new_cycle, total, exc,
+                "Piloto Automático: falha ao iniciar Ciclo %s (%s).",
+                label, exc,
             )
 
 
